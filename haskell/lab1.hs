@@ -75,14 +75,22 @@ nub [a] = [a]
 nub (x:xs) = let y = (nub xs)
     in (if (elem x y) then y else [x] ++ y)
 
--- permutations :: [a] -> [[a]]
--- permutations [] = [[]]
--- permutations [x] = [[x]]
--- permutations x = let y = partitions x in
---                 permutationsHelper [z | z <- y]
+permutations :: [a] -> [[a]]
+permutations [] = [[]]
+permutations [x] = [[x]]
+permutations x = let y = partitions x in
+                permutationsHelper [z | z <- y]
 
--- -- permutacje dla jednej pary odcinków
--- permutationsHelper :: ([a], [a]) -> [[a]]
--- permutationsHelper ([x], [y]) = [[x:y], [y:x]]
--- permutationsHelper ([x], y) = let z = permutations y in
---                             ([x:v | v <- z] ++ [v:x | v <-z])
+-- permutacje dla jednej pary odcinków
+permutationsHelper :: [([a], [a])] -> [[a]]
+permutationsHelper [([], [])] = [[]]
+permutationsHelper [([], x)] = [x]
+permutationsHelper [(x, [])] = [x]
+permutationsHelper [([x], [y])] = [x:[y], y:[x]]
+permutationsHelper [([x], y)] = let z = permutations y in
+                            ([x:v | v <- z] ++ [v ++ [x] | v <-z])
+permutationsHelper [(x, [y])] = let z = permutations x in
+                            ([y:v | v <- z] ++ [v ++ [y] | v <-z])
+permutationsHelper [(x, y)] = let z = permutations x in
+                            (let v = permutations y in
+                                ([(a ++ b) ++ (b ++ a) | a <- z, b <-v]))
