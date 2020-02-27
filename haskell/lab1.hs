@@ -25,17 +25,17 @@ myTail :: [a]  -> a
 myTail [x] = x
 myTail (x:xs) = myTail xs
 
--- myPlus :: [a] -> [a] -> [a]
--- myPlus [] [] = []
--- myPlus [] x = x
--- myPlus x [] = x
--- myPlus x (y:ys) = myPlus (x:y) ys
+myPlus :: [a] -> [a] -> [a]
+myPlus [] [] = []
+myPlus [] x = x
+myPlus x [] = x
+myPlus [x] y = x:y
+myPlus (x:xs) y = x:(myPlus xs y)
 
 myTake :: [a] -> Int -> [a]
 myTake [] i = []
 myTake x 0 = []
 myTake (x:xs) i = (x:myTake xs (i-1))
-
 
 myDrop :: [a] -> Int -> [a]
 myDrop [] i = []
@@ -74,3 +74,15 @@ nub [] = []
 nub [a] = [a]
 nub (x:xs) = let y = (nub xs)
     in (if (elem x y) then y else [x] ++ y)
+
+-- permutations :: [a] -> [[a]]
+-- permutations [] = [[]]
+-- permutations [x] = [[x]]
+-- permutations x = let y = partitions x in
+--                 permutationsHelper [z | z <- y]
+
+-- -- permutacje dla jednej pary odcinków
+-- permutationsHelper :: ([a], [a]) -> [[a]]
+-- permutationsHelper ([x], [y]) = [[x:y], [y:x]]
+-- permutationsHelper ([x], y) = let z = permutations y in
+--                             ([x:v | v <- z] ++ [v:x | v <-z])
