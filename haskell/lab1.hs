@@ -45,3 +45,32 @@ myDrop (x:xs) i = myDrop xs (i-1)
 myFilter :: (a->Bool) -> [a] -> [a]
 myFilter cond [] = []
 myFilter cond (x:xs) = if cond x then (x:myFilter cond xs) else myFilter cond xs
+
+myInits :: [a] -> [[a]]
+myInits [] = [[]]
+myInits [x] = [[x]] ++ myInits []
+myInits x = [x] ++ myInits (myTake x (len x - 1))
+
+inits :: [a] -> [[a]]
+inits a = [myTake a i | i <- [0..len a]]
+
+inits2 :: [a] -> [[a]]
+inits2 [] = [[]]
+inits2 [x] = [[], [x]]
+inits2 (x:xs) = let y = (inits xs)
+                in ([[]] ++ [x:z | z <- y])
+
+partitions :: [a] -> [([a], [a])]
+partitions a = myPartitions a (len a)
+
+myPartitions :: [a] -> Int -> [([a], [a])]
+myPartitions [] x = [([],[])]
+myPartitions x 0 = []
+myPartitions [x] 1 = [([x], []), ([], [x])]
+myPartitions x y = [(myTake x y, myDrop x y)] ++ myPartitions x (y-1)
+
+nub :: Eq a => [a] -> [a]
+nub [] = []
+nub [a] = [a]
+nub (x:xs) = let y = (nub xs)
+    in (if (elem x y) then y else [x] ++ y)
