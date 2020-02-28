@@ -2,7 +2,6 @@ mul x y = x * y
 square x = mul x x
 area r = pi * square r
 
-
 fact 0 = 1
 fact n = n * fact (n-1)
 
@@ -90,3 +89,7 @@ permutationsHelper ([x], [y]) = [[x, y], [y, x]]
 permutationsHelper ([x], y) = [x:z | z <- permutations y] ++ [z ++ [x] |z <- permutations y]
 permutationsHelper (x, [y]) = permutationsHelper ([y], x)
 permutationsHelper (x:xs, y) = [x:z ++ v | z <- permutations xs, v <- permutations y]
+
+myMap :: (a -> b) -> [a] -> [b]
+myMap f [] = []
+myMap f (x:xs) = (f x):(myMap f xs)
