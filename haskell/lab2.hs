@@ -6,22 +6,45 @@ triads x = [(a,b,c) | (a, b, c) <- triples x, a^2 + b^2 == c^2]
 
 -- nonTrivialTriads :: Int -> [(Int, Int, Int)]
 -- nonTrivialTriads
-
-removePermutationsFromTriads :: [(Int, Int, Int)] -> [(Int, Int, Int)]
-removePermutationsFromTriads [] = []
-removePermutationsFromTriads [x] = [x]
-removePermutationsFromTriads (x:xs) = let (a, b, c) = x
-                                    in 
-                                    (if (b, a, c) `elem` xs
-                                    then removePermutationsFromTriads xs
-                                    else x:removePermutationsFromTriads xs)
+ 
+-- removePermutationsFromTriads :: [(Int, Int, Int)] -> [(Int, Int, Int)]
+-- removePermutationsFromTriads [] = []
+-- removePermutationsFromTriads [x] = [x]
+-- removePermutationsFromTriads (x:xs) = let (a, b, c) = x
+--                                     in 
+--                                     (if (b, a, c) `elem` xs
+--                                     then removePermutationsFromTriads xs
+--                                     else x:removePermutationsFromTriads xs)
 
 -- removeMultiplicationsFromTriads :: [(Int, Int, Int)] -> [(Int, Int, Int)]
--- removeMultiplicationsFromTriads [] = []
--- removeMultiplicationsFromTriads [x] = [x]
--- removeMultiplicationsFromTriads x:xs = let (a, b, c) = x
---                                         in
---                                         (if )
+-- removePermutationsFromTriads x = [(a, b, c) | (a, b, c) <- x]
+
+-- removePermutationsFromTriads :: [(Int, Int, Int)] -> [(Int, Int, Int)]
+-- removePermutationsFromTriads x = [(a, b, c) | (a, b, c) <- x, not ((b, a, c) `elem` x)]
+
+fib :: Int -> Int
+fib 0 = 0
+fib 1 = 1
+fib n = fibHelper 0 1 (n-2)
+
+fibHelper :: Int -> Int -> Int -> Int
+fibHelper x y 0 = x + y
+fibHelper x y n = fibHelper y (x+y) (n-1)
+
+myReverse :: [a] -> [a]
+myReverse x = reverseHelper x []
+
+reverseHelper :: [a] -> [a] -> [a]
+reverseHelper [] rev = rev
+reverseHelper [x] rev = x:rev
+reverseHelper (x:xs) rev = reverseHelper xs (x:rev)
+
+fact :: Int -> Int
+fact n = factHelper n 1
+
+factHelper :: Int -> Int -> Int
+factHelper 0 acc = acc
+factHelper x acc = factHelper (x-1) (x*acc)
 
 indexOf :: Char -> String -> Maybe Int
 indexOf c s = findIn c s 0
@@ -46,3 +69,26 @@ incAll :: [[Int]] -> [[Int]]
 incAll [] = []
 incAll [x] = [[y+1 | y <- x]]
 incAll (x:xs) = incAll [x] ++ incAll xs
+
+fact2 :: Int -> Int
+fact2 n = foldr (*) 1 [1..n]
+
+concat2 :: [[a]] -> [a]
+concat2 (x:xs) = foldl (++) x xs
+
+max2 :: [Int] -> Int
+max2 (x:xs) = foldr max x xs
+
+min2 :: [Int] -> Int
+min2 (x:xs) = foldr min x xs
+
+winner :: (a -> a -> a) -> [a] -> a
+winner f (x:xs) = foldr f x xs
+
+dotProduct :: [Int] -> [Int] -> Int
+dotProduct x y = foldr (+) 0 (zipWith (*) x y)
+
+nub :: Eq a => [a] -> [a]
+nub [] = []
+nub [a] = [a]
+nub (x:xs) = x:(nub(filter (/=x) xs))
