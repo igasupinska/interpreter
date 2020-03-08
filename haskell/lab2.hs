@@ -4,23 +4,18 @@ triples x = [(a,b,c)| a <- [1..x], b <- [1..x], c <- [1..x]]
 triads :: Int -> [(Int,Int,Int)]
 triads x = [(a,b,c) | (a, b, c) <- triples x, a^2 + b^2 == c^2]
 
--- nonTrivialTriads :: Int -> [(Int, Int, Int)]
--- nonTrivialTriads
- 
--- removePermutationsFromTriads :: [(Int, Int, Int)] -> [(Int, Int, Int)]
--- removePermutationsFromTriads [] = []
--- removePermutationsFromTriads [x] = [x]
--- removePermutationsFromTriads (x:xs) = let (a, b, c) = x
---                                     in 
---                                     (if (b, a, c) `elem` xs
---                                     then removePermutationsFromTriads xs
---                                     else x:removePermutationsFromTriads xs)
+nonTrivialTriads :: Int -> [(Int,Int,Int)]
+nonTrivialTriads x = [(a,b,c) | (a, b, c) <- triples x, a^2 + b^2 == c^2,
+                                a <= b, coprime a b]
 
--- removeMultiplicationsFromTriads :: [(Int, Int, Int)] -> [(Int, Int, Int)]
--- removePermutationsFromTriads x = [(a, b, c) | (a, b, c) <- x]
+coprime :: Int -> Int -> Bool
+coprime a b = coprimeHelper a b (min a b)
 
--- removePermutationsFromTriads :: [(Int, Int, Int)] -> [(Int, Int, Int)]
--- removePermutationsFromTriads x = [(a, b, c) | (a, b, c) <- x, not ((b, a, c) `elem` x)]
+coprimeHelper :: Int -> Int -> Int -> Bool
+coprimeHelper a b 1 = True
+coprimeHelper a b i = if a `mod` i == 0 && b `mod` i == 0
+                        then False
+                        else coprimeHelper a b (i-1)
 
 fib :: Int -> Int
 fib 0 = 0
