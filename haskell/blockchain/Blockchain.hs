@@ -59,18 +59,18 @@ mineBlock :: Miner -> Hash -> [Transaction] -> Block
 mineBlock miner parent txs = mineBlockHelper miner parent txs 0
 
 -- poprawić tak, żeby nie tworzyło się za każdym razem
-mineBlockHelper:: Miner -> Hash -> [Transaction] -> Num -> Block -- num? int? jak nonce
+mineBlockHelper:: Miner -> Hash -> [Transaction] -> Int -> Block -- num? int? jak nonce
 mineBlockHelper miner parent txs nonce = if validNonce (BlockHeader
                                                     { parent = parent
                                                     , coinbase = coinbaseTx miner
-                                                    , txroot = buildTree txs
+                                                    , txroot = treeHash $ buildTree (coinbaseTx miner:txs)
                                                     , nonce = hash nonce
                                                     })
                                           then Block
                                             { blockHdr = BlockHeader
                                                         { parent = parent
                                                         , coinbase = coinbaseTx miner
-                                                        , txroot = buildTree txs
+                                                        , txroot = treeHash $ buildTree (coinbaseTx miner:txs)
                                                         , nonce = hash nonce
                                                         }
                                             , blockTxs = txs
@@ -90,11 +90,16 @@ chain = [block2, block1, block0]
 -- >>> VH <$> verifyChain [block2,block1,block0]
 -- Just 0x0dbea380
 
+-- do przepisania
 validChain :: [Block] -> Bool
-validChain = undefined
+validChain [] = False -- co tutaj?
+validChain [b] = isJust (verifyBlock b 0)
+validChain (b1:b2:bs) = isJust (verifyBlock b1 (hash b2)) && validChain bs
 
 verifyChain :: [Block] -> Maybe Hash
-verifyChain = undefined
+verifyChain b@(b1:bs) = if validChain b
+                        then Just (hash b1)
+                        else Nothing
 
 verifyBlock :: Block -> Hash -> Maybe Hash
 verifyBlock b@(Block hdr txs) parentHash = do
@@ -191,3 +196,10 @@ pprTx tx@(Tx from to amount)
 
 pprTxs :: [Transaction] -> ShowS
 pprTxs = pprV . map pprTx
+
+
+-- let genesis = block0
+-- let block0 = mineBlock (hash "Satoshi") 0 []
+-- let block1 = mineBlock (hash "Alice") (hash genesis) []
+-- let block2 = mineBlock (hash "Charlie") (hash block1) [tx1]
+-- let chain = [block2, block1, block0]
