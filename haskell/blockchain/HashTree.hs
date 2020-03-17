@@ -1,3 +1,4 @@
+module HashTree where
 import Hashable32
 import Data.Maybe -- sprawdzić, czy tak można
 
