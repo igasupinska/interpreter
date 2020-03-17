@@ -56,7 +56,26 @@ type Miner = Address
 type Nonce = Word32
 
 mineBlock :: Miner -> Hash -> [Transaction] -> Block
-mineBlock miner parent txs = undefined
+mineBlock miner parent txs = mineBlockHelper miner parent txs 0
+
+-- poprawić tak, żeby nie tworzyło się za każdym razem
+mineBlockHelper:: Miner -> Hash -> [Transaction] -> Num -> Block -- num? int? jak nonce
+mineBlockHelper miner parent txs nonce = if validNonce (BlockHeader
+                                                    { parent = parent
+                                                    , coinbase = coinbaseTx miner
+                                                    , txroot = buildTree txs
+                                                    , nonce = hash nonce
+                                                    })
+                                          then Block
+                                            { blockHdr = BlockHeader
+                                                        { parent = parent
+                                                        , coinbase = coinbaseTx miner
+                                                        , txroot = buildTree txs
+                                                        , nonce = hash nonce
+                                                        }
+                                            , blockTxs = txs
+                                            }
+                                          else mineBlockHelper miner parent txs (nonce + 1)
 
 genesis = block0
 block0 = mineBlock (hash "Satoshi") 0 []
