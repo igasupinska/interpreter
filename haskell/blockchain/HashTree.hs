@@ -47,10 +47,11 @@ data MerkleProof a = MerkleProof a MerklePath
 
 instance Show a => Show (MerkleProof a) where
     show (MerkleProof a []) = "Nothing"
-    show (MerkleProof a p) = "MerkleProof " ++ show a ++ showMerklePath [p]
+    show (MerkleProof a p) = "MerkleProof " ++ show a ++ " " ++ showMerklePath [p]
 
 showMerklePath :: [MerklePath] -> String
 showMerklePath [] = ""
+showMerklePath [p] = showMerklePathHelper p
 showMerklePath (p:ps) = showMerklePathHelper p ++ "\n" ++ showMerklePath ps
 
 showMerklePathHelper :: MerklePath -> String
