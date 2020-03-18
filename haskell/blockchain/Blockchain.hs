@@ -129,8 +129,16 @@ validateReceipt :: TransactionReceipt -> BlockHeader -> Bool
 validateReceipt r hdr = txrBlock r == hash hdr
                         && verifyProof (txroot hdr) (txrProof r)
 
+createReceipt :: Block -> Transaction -> TransactionReceipt
+createReceipt (Block hdr txs) tx = TxReceipt {
+                                txrBlock = hash hdr
+                              , txrProof = fromMaybe (MerkleProof tx []) (buildProof tx (buildTree (coinbase hdr:txs)))
+                              }
+
 mineTransactions :: Miner -> Hash -> [Transaction] -> (Block, [TransactionReceipt])
-mineTransactions miner parent txs = undefined
+mineTransactions miner parent txs = let b = mineBlock miner parent txs in
+                                    (b, map (createReceipt b) txs)
+
 
 {- | Pretty printing
 >>> runShows $ pprBlock block2
@@ -196,10 +204,3 @@ pprTx tx@(Tx from to amount)
 
 pprTxs :: [Transaction] -> ShowS
 pprTxs = pprV . map pprTx
-
-
--- let genesis = block0
--- let block0 = mineBlock (hash "Satoshi") 0 []
--- let block1 = mineBlock (hash "Alice") (hash genesis) []
--- let block2 = mineBlock (hash "Charlie") (hash block1) [tx1]
--- let chain = [block2, block1, block0]
