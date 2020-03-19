@@ -1,4 +1,5 @@
 import Data.Char (isDigit)
+import Data.Either
 
 readInts :: String -> [Int]
 readInts s = [x | Just x <- map readInt (words s)]
@@ -22,6 +23,39 @@ turnToInt "0" i = i*10
 turnToInt [s] i = i*10 + turnToInt [s] i
 turnToInt (s:ss) i = turnToInt ss (turnToInt [s] i) 
 
--- readInts2 :: String -> Either String [Int]
--- readInts2 s = all ()
+mapRight ::  (b1 -> b2) -> Either a b1 -> Either a b2
+mapRight f (Left a) = Left a
+mapRight f (Right b) = Right (f b)
+
+reverseRight :: Either e [a] -> Either e [a]
+reverseRight (Left e) = Left e
+reverseRight (Right a) = Right (reverse a)
+
+
+fromEither :: Either a a -> a
+fromEither (Left a) = a
+fromEither (Right a) = a
+
+fromRight :: b -> Either a b -> b
+fromRight b (Left a) = b
+fromRight b (Right a) = a
+
+readInts2 :: String -> Either String [Int]
+readInts2 s = readInts2Helper (words s)
+
+readInts2Helper :: [String] -> Either String [Int]
+readInts2Helper [] = Right []
+readInts2Helper (s:ss) = let x = readInt2 s in
+                            if isLeft x
+                                then x
+                                else
+                                    let rest = readInts2Helper ss in
+                                     if isRight rest
+                                         then Right (fromRight [] x ++ fromRight [] rest)
+                                         else rest
+
+readInt2 :: String -> Either String [Int]
+readInt2 s = if all isDigit s
+                then Right [turnToInt s 0]
+                else Left ("Not a number " ++ s)
 
