@@ -59,3 +59,9 @@ readInt2 s = if all isDigit s
                 then Right [turnToInt s 0]
                 else Left ("Not a number " ++ s)
 
+sumInts :: String -> String
+sumInts s = sumIntsHelper (readInts2 s)
+
+sumIntsHelper :: Either String [Int] -> String
+sumIntsHelper (Left s) = s
+sumIntsHelper (Right s) = show (foldr (+) 0 s)
