@@ -17,7 +17,6 @@ buildTree a = buildTreeLevel [] (convertToLeaves a) !! 0
 
 convertToLeaves :: Hashable a => [a] -> [Tree a]
 convertToLeaves [] = []
-convertToLeaves [a] = [leaf a]
 convertToLeaves (x:xs) = leaf x : convertToLeaves xs
 
 buildTreeLevel :: Hashable a => [Tree a] -> [Tree a] -> [Tree a]
@@ -49,7 +48,6 @@ instance Show a => Show (MerkleProof a) where
     show (MerkleProof a p) = "MerkleProof " ++ show a ++ " " ++ showMerklePath [p]
 
 showMerklePath :: [MerklePath] -> String
-showMerklePath [] = ""
 showMerklePath [p] = showMerklePathHelper p
 showMerklePath (p:ps) = showMerklePathHelper p ++ "\n" ++ showMerklePath ps
 
