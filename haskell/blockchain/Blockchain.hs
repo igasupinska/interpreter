@@ -60,22 +60,18 @@ mineBlock miner parent txs = mineBlockHelper miner parent txs 0
 
 -- poprawić tak, żeby nie tworzyło się za każdym razem
 mineBlockHelper:: Miner -> Hash -> [Transaction] -> Int -> Block -- num? int? jak nonce
-mineBlockHelper miner parent txs nonce = if validNonce (BlockHeader
-                                                    { parent = parent
-                                                    , coinbase = coinbaseTx miner
-                                                    , txroot = treeHash $ buildTree (coinbaseTx miner:txs)
-                                                    , nonce = hash nonce
-                                                    })
-                                          then Block
-                                            { blockHdr = BlockHeader
-                                                        { parent = parent
-                                                        , coinbase = coinbaseTx miner
-                                                        , txroot = treeHash $ buildTree (coinbaseTx miner:txs)
-                                                        , nonce = hash nonce
-                                                        }
-                                            , blockTxs = txs
-                                            }
-                                          else mineBlockHelper miner parent txs (nonce + 1)
+mineBlockHelper miner parent txs nonce = let hdr = BlockHeader
+                                                  { parent = parent
+                                                  , coinbase = coinbaseTx miner
+                                                  , txroot = treeHash $ buildTree (coinbaseTx miner:txs)
+                                                  , nonce = hash nonce
+                                                  } in
+                                          if validNonce hdr
+                                            then Block
+                                              { blockHdr = hdr
+                                              , blockTxs = txs
+                                              }
+                                            else mineBlockHelper miner parent txs (nonce + 1)
 
 genesis = block0
 block0 = mineBlock (hash "Satoshi") 0 []
