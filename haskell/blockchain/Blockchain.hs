@@ -59,7 +59,7 @@ mineBlock :: Miner -> Hash -> [Transaction] -> Block
 mineBlock miner parent txs = mineBlockHelper miner parent txs 0
 
 -- poprawić tak, żeby nie tworzyło się za każdym razem
-mineBlockHelper:: Miner -> Hash -> [Transaction] -> Int -> Block -- num? int? jak nonce
+mineBlockHelper :: Miner -> Hash -> [Transaction] -> Int -> Block -- num? int? jak nonce
 mineBlockHelper miner parent txs nonce = let hdr = BlockHeader
                                                   { parent = parent
                                                   , coinbase = coinbaseTx miner
@@ -105,7 +105,7 @@ verifyBlock b@(Block hdr txs) parentHash = do
 
 
 {- | Transaction Receipts
->>> charlie = hash "Charlie"
+>>> let charlie = hash "Charlie"
 >>> let (block, [receipt]) = mineTransactions charlie (hash block1) [tx1]
 >>> block
 BlockHeader {parent = 797158976, coinbase = Tx {txFrom = 0, txTo = 1392748814, txAmount = 50000}, txroot = 2327748117, nonce = 3}
@@ -113,7 +113,7 @@ Tx {txFrom = 2030195168, txTo = 2969638661, txAmount = 1000}
 <BLANKLINE>
 
 >>> receipt
-TxReceipt {txrBlock = 230597504, txrProof = MerkleProof Tx {txFrom = 2030195168, txTo = 2969638661, txAmount = 1000} >0xbcc3e45a}
+TxReceipt {txrBlock = 230597504, txrProof = MerkleProof (Tx {txFrom = 2030195168, txTo = 2969638661, txAmount = 1000}) >0xbcc3e45a}
 >>> validateReceipt receipt (blockHdr block)
 True
 -}
@@ -121,6 +121,7 @@ True
 data TransactionReceipt = TxReceipt
   {  txrBlock :: Hash, txrProof :: MerkleProof Transaction } deriving Show
 
+-- Iga: można uznać, że pełna funkcja
 validateReceipt :: TransactionReceipt -> BlockHeader -> Bool
 validateReceipt r hdr = txrBlock r == hash hdr
                         && verifyProof (txroot hdr) (txrProof r)
@@ -134,7 +135,6 @@ createReceipt (Block hdr txs) tx = TxReceipt {
 mineTransactions :: Miner -> Hash -> [Transaction] -> (Block, [TransactionReceipt])
 mineTransactions miner parent txs = let b = mineBlock miner parent txs in
                                     (b, map (createReceipt b) txs)
-
 
 {- | Pretty printing
 >>> runShows $ pprBlock block2
@@ -200,3 +200,47 @@ pprTx tx@(Tx from to amount)
 
 pprTxs :: [Transaction] -> ShowS
 pprTxs = pprV . map pprTx
+
+
+-- usunąć, moje testy
+{- |
+>>> runShows $ pprBlock block0
+hash: 0x70b432e0
+parent: 0000000000
+miner: 0x7203d9df
+root: 0x5b10bd5d
+nonce: 18
+Tx# 0x5b10bd5d from: 0000000000 to: 0x7203d9df amount: 50000
+
+>>> runShows $ pprBlock block1
+hash: 0x2f83ae40
+parent: 0x70b432e0
+miner: 0x790251e0
+root: 0x5ea7a6f0
+nonce: 0
+Tx# 0x5ea7a6f0 from: 0000000000 to: 0x790251e0 amount: 50000
+
+>>> makeTx f t a = Tx (hash f) (hash t) (a*coin)
+>>> tx1 = makeTx "Satoshi" "Alice" 10
+>>> tx2 = makeTx "Alice" "Bob" 1
+>>> tx3 = makeTx "Alice" "Charlie" 1
+>>> mineTransactions (hash "Charlie") (hash block1) [tx1,tx2,tx3]
+(BlockHeader {parent = 797158976, coinbase = Tx {txFrom = 0, txTo = 1392748814, txAmount = 50000}, txroot = 2996394280, nonce = 26}
+Tx {txFrom = 1912855007, txTo = 2030195168, txAmount = 10000}
+Tx {txFrom = 2030195168, txTo = 2969638661, txAmount = 1000}
+Tx {txFrom = 2030195168, txTo = 1392748814, txAmount = 1000}
+,[TxReceipt {txrBlock = 3725795968, txrProof = MerkleProof (Tx {txFrom = 1912855007, txTo = 2030195168, txAmount = 10000}) <0xae9d56b7>0xbcc3e45a},TxReceipt {txrBlock = 3725795968, txrProof = MerkleProof (Tx {txFrom = 2030195168, txTo = 2969638661, txAmount = 1000}) >0x3c177e6b<0x1b6a0892},TxReceipt {txrBlock = 3725795968, txrProof = MerkleProof (Tx {txFrom = 2030195168, txTo = 1392748814, txAmount = 1000}) >0x3c177e6b>0x085e2467}])
+
+>>> runShows $ pprBlock $ mineBlock (hash "Charlie") (hash block1) [tx1]
+hash: 0x0dbea380
+parent: 0x2f83ae40
+miner: 0x5303a90e
+root: 0x8abe9e15
+nonce: 3
+Tx# 0xbcc3e45a from: 0000000000 to: 0x5303a90e amount: 50000
+Tx# 0x085e2467 from: 0x790251e0 to: 0xb1011705 amount: 1000
+
+>>> runShows $ pprListWith showString ["asd", "zxc"]
+asd
+zxc
+-}

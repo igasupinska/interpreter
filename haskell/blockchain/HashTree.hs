@@ -1,14 +1,15 @@
 module HashTree where
 import Hashable32
 
-data Tree a = Empty | Node Hash (Tree a) (Tree a)
+data Tree a = Empty | Node Hash (Tree a) (Tree a) | Leaf Hash a -- czy kal mam leaf to potrzeba empty?
 
 leaf :: Hashable a => a -> Tree a
-leaf a = Node (hash a) Empty Empty
+leaf a = Leaf (hash a) a
 
 node :: Hashable a => Tree a -> Tree a -> Tree a
 node l r = Node (combine (treeHash l) (treeHash r)) l r
 
+-- na ilu poziomach może występować twig?
 twig :: Hashable a => Tree a -> Tree a
 twig l = Node (combine (treeHash l) (treeHash l)) l Empty
 
@@ -26,13 +27,14 @@ buildTreeLevel l (a:[]) = buildTreeLevel [] (l ++ [twig a])
 buildTreeLevel l (a:b:t) = buildTreeLevel (l ++ [node a b]) t
 
 treeHash :: Hashable a => Tree a -> Hash
+treeHash (Leaf x _) = x
 treeHash (Node x _ _) = x
 
 drawTree :: Show a => Tree a -> String
 drawTree t = drawTreeHelper 1 t ++ "\n"
 
 drawTreeHelper :: Show a => Int -> Tree a -> String
-drawTreeHelper i (Node a Empty Empty) = showHash a ++ " ?" -- dopisać znaki
+drawTreeHelper i (Leaf h a) = showHash h ++ " " ++ show a
 drawTreeHelper i (Node a l Empty) = showHash a ++ " +\n" ++ replicate (2*i) ' ' ++ drawTreeHelper (i+1) l
 drawTreeHelper i (Node a l r) = showHash a ++ " -\n"
                             ++ replicate (2*i) ' '
@@ -45,7 +47,7 @@ data MerkleProof a = MerkleProof a MerklePath
 
 instance Show a => Show (MerkleProof a) where
     show (MerkleProof a []) = "Nothing"
-    show (MerkleProof a p) = "MerkleProof " ++ show a ++ " " ++ showMerklePath [p]
+    show (MerkleProof a p) = "MerkleProof " ++ show a ++ " " ++ showMerklePath [p] --poprawić!
 
 showMerklePath :: [MerklePath] -> String
 showMerklePath [p] = showMerklePathHelper p
@@ -67,8 +69,8 @@ buildProof e t = let p = merklePaths e t in
 
 merklePaths :: Hashable a => a -> Tree a -> [MerklePath]
 merklePaths e Empty = []
-merklePaths e (Node a Empty Empty)
-    | hash e == a = [[]]
+merklePaths e (Leaf h _)
+    | hash e == h = [[]]
     | otherwise = []
 merklePaths e (Node a l Empty)
     | hash e == treeHash l = [[Left $ treeHash l]] -- twig has duplicated child
@@ -101,3 +103,45 @@ verifyProofHelper (MerkleProof a [Right p]) = combine p (hash a)
 verifyProofHelper (MerkleProof a (Left p:ps)) = combine (verifyProofHelper (MerkleProof a ps)) p
 verifyProofHelper (MerkleProof a (Right p:ps)) = combine p (verifyProofHelper (MerkleProof a ps))
 
+-- usunąć, moje testy
+{- |
+
+>>> putStr $ drawTree $ buildTree "fubar"
+0x2e1cc0e4 -
+  0xfbfe18ac -
+    0x6600a107 -
+      0x00000066 'f'
+      0x00000075 'u'
+    0x62009aa7 -
+      0x00000062 'b'
+      0x00000061 'a'
+  0xd11bea20 +
+    0x7200b3e8 +
+      0x00000072 'r'
+
+>>> print $ drawTree $ buildTree "a"
+"0x00000061 'a'\n"
+
+>>> buildProof 'e' $ buildTree "bitcoin"
+Nothing
+
+>>> let t = buildTree "bitcoin"
+>>> let proof = buildProof 'i' t
+>>> verifyProof (treeHash t) <$> proof
+Just True
+
+>>> verifyProof 0xbada55bb <$> proof
+Just False
+
+>>> merklePaths 'i' $ buildTree "bitcoin"
+[[Left 1377068650,Left 1946203903,Right 98],[Right 1777612924,Left 1845538200,Right 111]]
+-}
+
+
+-- testy, które jeszcze nie chodzą
+-- >>> mapM_ print $ map showMerklePath $ merklePaths 'i' $ buildTree "bitcoin"
+-- "<0x5214666a<0x7400b6ff>0x00000062"
+-- ">0x69f4387c<0x6e00ad98>0x0000006f"
+
+-- >>> buildProof 'i' $ buildTree "bitcoin"
+-- Just (MerkleProof 'i' <0x5214666a<0x7400b6ff>0x00000062)
