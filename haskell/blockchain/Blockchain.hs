@@ -204,6 +204,15 @@ pprTxs = pprV . map pprTx
 
 -- usunąć, moje testy
 {- |
+>>> runShows $ pprBlock $ mineBlock (hash "Charlie") (hash block1) [tx1]
+hash: 0x0dbea380
+parent: 0x2f83ae40
+miner: 0x5303a90e
+root: 0x8abe9e15
+nonce: 3
+Tx# 0xbcc3e45a from: 0000000000 to: 0x5303a90e amount: 50000
+Tx# 0x085e2467 from: 0x790251e0 to: 0xb1011705 amount: 1000
+
 >>> runShows $ pprBlock block0
 hash: 0x70b432e0
 parent: 0000000000
@@ -230,15 +239,6 @@ Tx {txFrom = 1912855007, txTo = 2030195168, txAmount = 10000}
 Tx {txFrom = 2030195168, txTo = 2969638661, txAmount = 1000}
 Tx {txFrom = 2030195168, txTo = 1392748814, txAmount = 1000}
 ,[TxReceipt {txrBlock = 3725795968, txrProof = MerkleProof (Tx {txFrom = 1912855007, txTo = 2030195168, txAmount = 10000}) <0xae9d56b7>0xbcc3e45a},TxReceipt {txrBlock = 3725795968, txrProof = MerkleProof (Tx {txFrom = 2030195168, txTo = 2969638661, txAmount = 1000}) >0x3c177e6b<0x1b6a0892},TxReceipt {txrBlock = 3725795968, txrProof = MerkleProof (Tx {txFrom = 2030195168, txTo = 1392748814, txAmount = 1000}) >0x3c177e6b>0x085e2467}])
-
->>> runShows $ pprBlock $ mineBlock (hash "Charlie") (hash block1) [tx1]
-hash: 0x0dbea380
-parent: 0x2f83ae40
-miner: 0x5303a90e
-root: 0x8abe9e15
-nonce: 3
-Tx# 0xbcc3e45a from: 0000000000 to: 0x5303a90e amount: 50000
-Tx# 0x085e2467 from: 0x790251e0 to: 0xb1011705 amount: 1000
 
 >>> runShows $ pprListWith showString ["asd", "zxc"]
 asd

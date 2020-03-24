@@ -45,9 +45,20 @@ drawTreeHelper i (Node a l r) = showHash a ++ " -\n"
 type MerklePath = [Either Hash Hash]
 data MerkleProof a = MerkleProof a MerklePath
 
+maybePrec = 0
+
+-- to skopiowane ze stacka
+newtype PlainString = PlainString String
+instance Show PlainString where
+  show (PlainString s) = s
+
 instance Show a => Show (MerkleProof a) where
-    show (MerkleProof a []) = "Nothing"
-    show (MerkleProof a p) = "MerkleProof " ++ show a ++ " " ++ showMerklePath [p] --poprawić!
+  showsPrec d (MerkleProof a []) = showParen (d > maybePrec) $ showsPrec (maybePrec+1) "Nothing"
+  showsPrec d (MerkleProof a p) = showParen (d > maybePrec) $
+                      showsPrec (maybePrec+1) (PlainString "MerkleProof ")
+                      . showsPrec (11) a
+                      . showString " "
+                      . showString (showMerklePath [p])
 
 showMerklePath :: [MerklePath] -> String
 showMerklePath [p] = showMerklePathHelper p
@@ -105,7 +116,6 @@ verifyProofHelper (MerkleProof a (Right p:ps)) = combine p (verifyProofHelper (M
 
 -- usunąć, moje testy
 {- |
-
 >>> putStr $ drawTree $ buildTree "fubar"
 0x2e1cc0e4 -
   0xfbfe18ac -
@@ -135,6 +145,9 @@ Just False
 
 >>> merklePaths 'i' $ buildTree "bitcoin"
 [[Left 1377068650,Left 1946203903,Right 98],[Right 1777612924,Left 1845538200,Right 111]]
+
+>>> buildProof 'i' $ buildTree "bitcoin"
+Just (MerkleProof 'i' <0x5214666a<0x7400b6ff>0x00000062)
 -}
 
 
@@ -143,5 +156,4 @@ Just False
 -- "<0x5214666a<0x7400b6ff>0x00000062"
 -- ">0x69f4387c<0x6e00ad98>0x0000006f"
 
--- >>> buildProof 'i' $ buildTree "bitcoin"
--- Just (MerkleProof 'i' <0x5214666a<0x7400b6ff>0x00000062)
+
