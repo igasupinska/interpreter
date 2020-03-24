@@ -1,7 +1,7 @@
 module HashTree where
 import Hashable32
 
-data Tree a = Empty | Node Hash (Tree a) (Tree a) | Leaf Hash a -- czy kal mam leaf to potrzeba empty?
+data Tree a = Empty | Node Hash (Tree a) (Tree a) | Leaf Hash a -- czy jak mam leaf to potrzeba empty?
 
 leaf :: Hashable a => a -> Tree a
 leaf a = Leaf (hash a) a
@@ -58,17 +58,17 @@ instance Show a => Show (MerkleProof a) where
                       showsPrec (maybePrec+1) (PlainString "MerkleProof ")
                       . showsPrec (11) a
                       . showString " "
-                      . showString (showMerklePath [p])
+                      . showString (showMerklePath p)
 
-showMerklePath :: [MerklePath] -> String
-showMerklePath [p] = showMerklePathHelper p
-showMerklePath (p:ps) = showMerklePathHelper p ++ "\n" ++ showMerklePath ps
+-- showMerklePath :: MerklePath -> String
+-- showMerklePath [p] = showMerklePathHelper p
+-- showMerklePath (p:ps) = showMerklePathHelper p ++ "\n" ++ showMerklePath ps
 
-showMerklePathHelper :: MerklePath -> String
-showMerklePathHelper [] = ""
-showMerklePathHelper [Left a] = "<" ++ showHash a
-showMerklePathHelper [Right a] = ">" ++ showHash a
-showMerklePathHelper (p:ps) = showMerklePathHelper [p] ++ showMerklePathHelper ps
+showMerklePath :: MerklePath -> String
+showMerklePath [] = ""
+showMerklePath [Left a] = "<" ++ showHash a
+showMerklePath [Right a] = ">" ++ showHash a
+showMerklePath (p:ps) = showMerklePath [p] ++ showMerklePath ps
 
 buildProof :: Hashable a => a -> Tree a -> Maybe (MerkleProof a)
 buildProof e Empty = Nothing
@@ -148,12 +148,13 @@ Just False
 
 >>> buildProof 'i' $ buildTree "bitcoin"
 Just (MerkleProof 'i' <0x5214666a<0x7400b6ff>0x00000062)
+
+>>> mapM_ print $ map showMerklePath $ merklePaths 'i' $ buildTree "bitcoin"
+"<0x5214666a<0x7400b6ff>0x00000062"
+">0x69f4387c<0x6e00ad98>0x0000006f"
 -}
 
 
--- testy, które jeszcze nie chodzą
--- >>> mapM_ print $ map showMerklePath $ merklePaths 'i' $ buildTree "bitcoin"
--- "<0x5214666a<0x7400b6ff>0x00000062"
--- ">0x69f4387c<0x6e00ad98>0x0000006f"
+
 
 
