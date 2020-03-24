@@ -35,12 +35,17 @@ drawTree t = drawTreeHelper 1 t ++ "\n"
 
 drawTreeHelper :: Show a => Int -> Tree a -> String
 drawTreeHelper i (Leaf h a) = showHash h ++ " " ++ show a
-drawTreeHelper i (Node a l Empty) = showHash a ++ " +\n" ++ replicate (2*i) ' ' ++ drawTreeHelper (i+1) l
-drawTreeHelper i (Node a l r) = showHash a ++ " -\n"
-                            ++ replicate (2*i) ' '
-                            ++ drawTreeHelper (i+1) l
-                            ++ "\n" ++ replicate (2*i) ' '
-                            ++ drawTreeHelper (i+1) r
+drawTreeHelper i (Node a l Empty) = showHash a
+                                    ++ " +\n"
+                                    ++ replicate (2*i) ' '
+                                    ++ drawTreeHelper (i+1) l
+drawTreeHelper i (Node a l r) = showHash a
+                                ++ " -\n"
+                                ++ replicate (2*i) ' '
+                                ++ drawTreeHelper (i+1) l
+                                ++ "\n"
+                                ++ replicate (2*i) ' '
+                                ++ drawTreeHelper (i+1) r
 -- part B
 type MerklePath = [Either Hash Hash]
 data MerkleProof a = MerkleProof a MerklePath
@@ -59,10 +64,6 @@ instance Show a => Show (MerkleProof a) where
                       . showsPrec (11) a
                       . showString " "
                       . showString (showMerklePath p)
-
--- showMerklePath :: MerklePath -> String
--- showMerklePath [p] = showMerklePathHelper p
--- showMerklePath (p:ps) = showMerklePathHelper p ++ "\n" ++ showMerklePath ps
 
 showMerklePath :: MerklePath -> String
 showMerklePath [] = ""
@@ -86,22 +87,12 @@ merklePaths e (Leaf h _)
 merklePaths e (Node a l Empty)
     | hash e == treeHash l = [[Left $ treeHash l]] -- twig has duplicated child
     | otherwise = []
-merklePaths e (Node a l r)
-    | hash e == treeHash l = [[Left $ treeHash r]]
-    | hash e == treeHash r = [[Right $ treeHash l]]
-    | otherwise = let pl = merklePaths e l
-                      pr = merklePaths e r
-                  in
-                    if length pl == 0 && length pr == 0
-                    then []
-                    else
-                        if length pl /= 0 && length pr /= 0
-                        then map (Left (treeHash r) :) pl ++ map (Right (treeHash l):) pr
-                        else
-                            if length pr /= 0
-                            then map (Right (treeHash l):) pr
-                            else map (Left (treeHash r):) pl
+merklePaths e (Node a l r) = myMap (Left (treeHash r):) (merklePaths e l)
+                          ++ myMap (Right (treeHash l):) (merklePaths e r)
 
+myMap :: (a -> b) -> [a] -> [b]
+myMap f [] = []
+myMap f p = map f p
 
 verifyProof :: Hashable a => Hash -> MerkleProof a -> Bool
 verifyProof h (MerkleProof a []) = False
