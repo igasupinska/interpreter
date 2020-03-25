@@ -28,35 +28,19 @@ treeHash (Node x _ _) = x
 
 drawTree :: Show a => Tree a -> String
 drawTree Empty = []
-drawTree t = drawTreeHelper 0 t ++ "\n"
+drawTree t = drawTreeLevel 0 t ++ "\n"
 
-drawTreeHelper :: Show a => Int -> Tree a -> String
-drawTreeHelper i (Leaf h a) = indentNewLine (2*i) ++ showHash h ++ " " ++ show a
-drawTreeHelper i (Node a l Empty) = indentNewLine (2*i)
+drawTreeLevel :: Show a => Int -> Tree a -> String
+drawTreeLevel lvl (Leaf h a) = indentNewLine (2*lvl) ++ showHash h ++ " " ++ show a
+drawTreeLevel lvl (Node a l Empty) = indentNewLine (2*lvl)
                                     ++ showHash a
                                     ++ " +"
-                                    ++ drawTreeHelper (i+1) l
-drawTreeHelper i (Node a l r) = indentNewLine(2*i)
+                                    ++ drawTreeLevel (lvl+1) l
+drawTreeLevel lvl (Node a l r) = indentNewLine(2*lvl)
                                 ++ showHash a
                                 ++ " -"
-                                ++ drawTreeHelper (i+1) l
-                                ++ drawTreeHelper (i+1) r
-
--- drawTree :: Show a => Tree a -> String
--- drawTree Empty = []
--- drawTree t = drawTreeHelper 0 t ++ "\n"
-
--- drawTreeHelper :: Show a => Int -> Tree a -> String
--- drawTreeHelper i (Leaf h a) = indentNewLine (2*i) ++ showHash h ++ " " ++ show a
--- drawTreeHelper i (Node a l Empty) = indentNewLine (2*i)
---                                     ++ showHash a
---                                     ++ " +"
---                                     ++ drawTreeHelper (i+1) l
--- drawTreeHelper i (Node a l r) = indentNewLine(2*i)
---                                 ++ showHash a
---                                 ++ " -"
---                                 ++ drawTreeHelper (i+1) l
---                                 ++ drawTreeHelper (i+1) r
+                                ++ drawTreeLevel (lvl+1) l
+                                ++ drawTreeLevel (lvl+1) r
 
 indentNewLine :: Int -> String
 indentNewLine 0 = []
