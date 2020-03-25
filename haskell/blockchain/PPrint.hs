@@ -11,18 +11,12 @@ pprV = intercalateS $ showString "\n"
 pprH = intercalateS $ showString " "
 
 intercalateS :: ShowS -> [ShowS] -> ShowS
-intercalateS sep (l:ls) = l . showString (intercalateSHelper sep ls)
-
-intercalateSHelper :: ShowS -> [ShowS] -> String
-intercalateSHelper sep [] = []
-intercalateSHelper sep (l:ls) = sep (l (intercalateSHelper sep ls))
+intercalateS sep [] = showString []
+intercalateS sep [l] = l
+intercalateS sep (l:ls) = l . sep . (intercalateS sep ls)
 
 pprListWith :: (a -> ShowS) -> [a] -> ShowS
-pprListWith f (l:ls) = showString ((f l) (pprListWithHelper f ls))
-
-pprListWithHelper :: (a -> ShowS) -> [a] -> String
-pprListWithHelper f [] = []
-pprListWithHelper f (l:ls) = "\n" ++ f l (pprListWithHelper f ls)
+pprListWith f l = pprV (map f l) 
 
 runShows :: ShowS -> IO ()
 runShows = putStrLn . ($"")
