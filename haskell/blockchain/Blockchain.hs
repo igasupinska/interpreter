@@ -56,12 +56,11 @@ type Miner = Address
 type Nonce = Word32
 
 mineBlock :: Miner -> Hash -> [Transaction] -> Block
-mineBlock miner parent txs = mineBlockHelper 0 BlockHeader
-                                                  { parent = parent
-                                                  , coinbase = coinbaseTx miner
-                                                  , txroot = treeHash $ buildTree (coinbaseTx miner:txs)
-                                                  , nonce = hash (0 :: Nonce)
-                                                  } txs
+mineBlock m p txs = mineBlockHelper 0 (BlockHeader p c t n) txs
+  where
+    c = coinbaseTx m
+    t = treeHash $ buildTree (c:txs)
+    n = hash (0 :: Nonce)
 
 mineBlockHelper :: Word32 -> BlockHeader -> [Transaction] -> Block
 mineBlockHelper num hdr txs
