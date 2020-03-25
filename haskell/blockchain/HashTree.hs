@@ -60,7 +60,7 @@ instance Show a => Show (MerkleProof a) where
                   where maxPrec = 11
 
 showMerklePath :: MerklePath -> String
-showMerklePath [] = ""
+showMerklePath [] = []
 showMerklePath [Left a] = "<" ++ showHash a
 showMerklePath [Right a] = ">" ++ showHash a
 showMerklePath (p:ps) = showMerklePath [p] ++ showMerklePath ps
@@ -71,13 +71,11 @@ buildProof e t = do
   return $ MerkleProof e path
 
 merklePaths :: Hashable a => a -> Tree a -> [MerklePath]
-merklePaths e Empty = [] -- czy to potrzebne?
+merklePaths e Empty = []
 merklePaths e (Leaf h _)
     | hash e == h = [[]]
     | otherwise = []
-merklePaths e (Node a l Empty)
-    | hash e == treeHash l = [[Left $ treeHash l]] -- twig has duplicated child
-    | otherwise = []
+merklePaths e (Node a l Empty) = fmap (Left (treeHash l):) (merklePaths e l)
 merklePaths e (Node a l r) = fmap (Left (treeHash r):) (merklePaths e l)
                           ++ fmap (Right (treeHash l):) (merklePaths e r)
 
@@ -85,7 +83,6 @@ verifyProof :: Hashable a => Hash -> MerkleProof a -> Bool
 verifyProof h (MerkleProof a []) = False
 verifyProof h p = h == verifyProofHelper p
 
--- sprawdzić kierunki, bo jakoś dziwnie
 verifyProofHelper :: Hashable a => MerkleProof a -> Hash
 verifyProofHelper (MerkleProof a [Left p]) = combine (hash a) p
 verifyProofHelper (MerkleProof a [Right p]) = combine p (hash a)

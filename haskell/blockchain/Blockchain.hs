@@ -64,9 +64,9 @@ mineBlock miner parent txs = mineBlockHelper 0 BlockHeader
                                                   } txs
 
 mineBlockHelper :: Word32 -> BlockHeader -> [Transaction] -> Block
-mineBlockHelper num hdr txs = if validNonce hdr
-                                      then (Block hdr txs)
-                                      else mineBlockHelper (num + 1) hdr {nonce = hash (num +1)} txs
+mineBlockHelper num hdr txs
+  | validNonce hdr = Block hdr txs
+  | otherwise = mineBlockHelper (num+1) hdr {nonce = hash (num+1)} txs
 
 genesis = block0
 block0 = mineBlock (hash "Satoshi") 0 []
@@ -81,11 +81,11 @@ chain = [block2, block1, block0]
 -- >>> VH <$> verifyChain [block2,block1,block0]
 -- Just 0x0dbea380
 
--- do przepisania
 validChain :: [Block] -> Bool
 validChain [] = False -- co tutaj?
 validChain [b] = isJust (verifyBlock b 0)
-validChain (b1:b2:bs) = isJust (verifyBlock b1 (hash b2)) && validChain bs
+validChain (b1:b2:bs) = isJust (verifyBlock b1 (hash b2))
+                      && validChain (b2:bs)
 
 verifyChain :: [Block] -> Maybe Hash
 verifyChain b@(b1:bs) = do
@@ -94,6 +94,7 @@ verifyChain b@(b1:bs) = do
 
 verifyBlock :: Block -> Hash -> Maybe Hash
 verifyBlock b@(Block hdr txs) parentHash = do
+  guard (validNonce hdr)
   guard (parent hdr == parentHash)
   guard (txroot hdr == treeHash (buildTree (coinbase hdr:txs)))
   return (hash b)
@@ -116,7 +117,6 @@ True
 data TransactionReceipt = TxReceipt
   {  txrBlock :: Hash, txrProof :: MerkleProof Transaction } deriving Show
 
--- Iga: można uznać, że pełna funkcja
 validateReceipt :: TransactionReceipt -> BlockHeader -> Bool
 validateReceipt r hdr = txrBlock r == hash hdr
                         && verifyProof (txroot hdr) (txrProof r)
@@ -162,6 +162,7 @@ nonce: 3
 Tx# 0xbcc3e45a from: 0000000000 to: 0x5303a90e amount: 50000
 Tx# 0x085e2467 from: 0x790251e0 to: 0xb1011705 amount: 1000
 -}
+
 pprHeader :: BlockHeader -> ShowS
 pprHeader self@(BlockHeader parent cb txroot nonce)
   = pprV [ p ("hash", VH $ hash self)
