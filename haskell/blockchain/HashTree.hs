@@ -1,7 +1,8 @@
 module HashTree where
 import Hashable32
+import Utils
 
-data Tree a = Empty | Node Hash (Tree a) (Tree a) | Leaf Hash a -- czy jak mam leaf to potrzeba empty?
+data Tree a = Empty | Node Hash (Tree a) (Tree a) | Leaf Hash a
 
 leaf :: Hashable a => a -> Tree a
 leaf a = Leaf (hash a) a
@@ -9,21 +10,16 @@ leaf a = Leaf (hash a) a
 node :: Hashable a => Tree a -> Tree a -> Tree a
 node l r = Node (combine (treeHash l) (treeHash r)) l r
 
--- na ilu poziomach może występować twig?
 twig :: Hashable a => Tree a -> Tree a
 twig l = Node (combine (treeHash l) (treeHash l)) l Empty
 
 buildTree :: Hashable a => [a] -> Tree a
-buildTree a = buildTreeLevel [] (convertToLeaves a) !! 0
-
-convertToLeaves :: Hashable a => [a] -> [Tree a]
-convertToLeaves [] = []
-convertToLeaves (x:xs) = leaf x : convertToLeaves xs
+buildTree l = buildTreeLevel [] (map leaf l) !! 0
 
 buildTreeLevel :: Hashable a => [Tree a] -> [Tree a] -> [Tree a]
 buildTreeLevel [] [a] = [a]
-buildTreeLevel l [] = if length l <= 1 then l else buildTreeLevel [] l
-buildTreeLevel l (a:[]) = buildTreeLevel [] (l ++ [twig a])
+buildTreeLevel l [] = buildTreeLevel [] l
+buildTreeLevel l [a] = buildTreeLevel [] (l ++ [twig a])
 buildTreeLevel l (a:b:t) = buildTreeLevel (l ++ [node a b]) t
 
 treeHash :: Hashable a => Tree a -> Hash
@@ -36,34 +32,31 @@ drawTree t = drawTreeHelper 1 t ++ "\n"
 drawTreeHelper :: Show a => Int -> Tree a -> String
 drawTreeHelper i (Leaf h a) = showHash h ++ " " ++ show a
 drawTreeHelper i (Node a l Empty) = showHash a
-                                    ++ " +\n"
-                                    ++ replicate (2*i) ' '
+                                    ++ " +"
+                                    ++ indentNewLine (2*i)
                                     ++ drawTreeHelper (i+1) l
 drawTreeHelper i (Node a l r) = showHash a
-                                ++ " -\n"
-                                ++ replicate (2*i) ' '
+                                ++ " -"
+                                ++ indentNewLine (2*i)
                                 ++ drawTreeHelper (i+1) l
-                                ++ "\n"
-                                ++ replicate (2*i) ' '
+                                ++ indentNewLine (2*i)
                                 ++ drawTreeHelper (i+1) r
+
+indentNewLine :: Int -> String
+indentNewLine n = "\n" ++ replicate n ' '
+
 -- part B
 type MerklePath = [Either Hash Hash]
 data MerkleProof a = MerkleProof a MerklePath
 
-maybePrec = 0
-
--- to skopiowane ze stacka
-newtype PlainString = PlainString String
-instance Show PlainString where
-  show (PlainString s) = s
-
 instance Show a => Show (MerkleProof a) where
-  showsPrec d (MerkleProof a []) = showParen (d > maybePrec) $ showsPrec (maybePrec+1) "Nothing"
-  showsPrec d (MerkleProof a p) = showParen (d > maybePrec) $
-                      showsPrec (maybePrec+1) (PlainString "MerkleProof ")
-                      . showsPrec (11) a
+  showsPrec d (MerkleProof a []) = showString "Nothing"
+  showsPrec d (MerkleProof a p) = showParen (d > 0) $
+                        showString "MerkleProof "
+                      . showsPrec (maxPrec) a
                       . showString " "
                       . showString (showMerklePath p)
+                  where maxPrec = 11
 
 showMerklePath :: MerklePath -> String
 showMerklePath [] = ""
@@ -72,27 +65,20 @@ showMerklePath [Right a] = ">" ++ showHash a
 showMerklePath (p:ps) = showMerklePath [p] ++ showMerklePath ps
 
 buildProof :: Hashable a => a -> Tree a -> Maybe (MerkleProof a)
-buildProof e Empty = Nothing
-buildProof e t = let p = merklePaths e t in
-                    if length p /= 0
-                        then Just (MerkleProof e (p!!0))
-                        else Nothing
-
+buildProof e t = do
+  path <- maybeHead (merklePaths e t)
+  return $ MerkleProof e path
 
 merklePaths :: Hashable a => a -> Tree a -> [MerklePath]
-merklePaths e Empty = []
+merklePaths e Empty = [] -- czy to potrzebne?
 merklePaths e (Leaf h _)
     | hash e == h = [[]]
     | otherwise = []
 merklePaths e (Node a l Empty)
     | hash e == treeHash l = [[Left $ treeHash l]] -- twig has duplicated child
     | otherwise = []
-merklePaths e (Node a l r) = myMap (Left (treeHash r):) (merklePaths e l)
-                          ++ myMap (Right (treeHash l):) (merklePaths e r)
-
-myMap :: (a -> b) -> [a] -> [b]
-myMap f [] = []
-myMap f p = map f p
+merklePaths e (Node a l r) = fmap (Left (treeHash r):) (merklePaths e l)
+                          ++ fmap (Right (treeHash l):) (merklePaths e r)
 
 verifyProof :: Hashable a => Hash -> MerkleProof a -> Bool
 verifyProof h (MerkleProof a []) = False
