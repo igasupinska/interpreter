@@ -121,10 +121,9 @@ validateReceipt r hdr = txrBlock r == hash hdr
                         && verifyProof (txroot hdr) (txrProof r)
 
 createReceipt :: Block -> Transaction -> TransactionReceipt
-createReceipt (Block hdr txs) tx = TxReceipt {
-                                txrBlock = hash hdr
-                              , txrProof = fromMaybe (MerkleProof tx []) (buildProof tx (buildTree (coinbase hdr:txs)))
-                              }
+createReceipt (Block hdr txs) tx = TxReceipt (hash hdr) proof
+  where
+    proof = fromMaybe (MerkleProof tx []) (buildProof tx (buildTree (coinbase hdr:txs)))
 
 mineTransactions :: Miner -> Hash -> [Transaction] -> (Block, [TransactionReceipt])
 mineTransactions miner parent txs = let b = mineBlock miner parent txs in
