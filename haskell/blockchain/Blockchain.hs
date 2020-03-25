@@ -56,22 +56,17 @@ type Miner = Address
 type Nonce = Word32
 
 mineBlock :: Miner -> Hash -> [Transaction] -> Block
-mineBlock miner parent txs = mineBlockHelper miner parent txs 0
-
--- poprawić tak, żeby nie tworzyło się za każdym razem
-mineBlockHelper :: Miner -> Hash -> [Transaction] -> Int -> Block -- num? int? jak nonce
-mineBlockHelper miner parent txs nonce = let hdr = BlockHeader
+mineBlock miner parent txs = mineBlockHelper 0 BlockHeader
                                                   { parent = parent
                                                   , coinbase = coinbaseTx miner
                                                   , txroot = treeHash $ buildTree (coinbaseTx miner:txs)
-                                                  , nonce = hash nonce
-                                                  } in
-                                          if validNonce hdr
-                                            then Block
-                                              { blockHdr = hdr
-                                              , blockTxs = txs
-                                              }
-                                            else mineBlockHelper miner parent txs (nonce + 1)
+                                                  , nonce = hash (0 :: Nonce)
+                                                  } txs
+
+mineBlockHelper :: Word32 -> BlockHeader -> [Transaction] -> Block
+mineBlockHelper num hdr txs = if validNonce hdr
+                                      then (Block hdr txs)
+                                      else mineBlockHelper (num + 1) hdr {nonce = hash (num +1)} txs
 
 genesis = block0
 block0 = mineBlock (hash "Satoshi") 0 []
@@ -93,9 +88,9 @@ validChain [b] = isJust (verifyBlock b 0)
 validChain (b1:b2:bs) = isJust (verifyBlock b1 (hash b2)) && validChain bs
 
 verifyChain :: [Block] -> Maybe Hash
-verifyChain b@(b1:bs) = if validChain b
-                        then Just (hash b1)
-                        else Nothing
+verifyChain b@(b1:bs) = do
+  guard (validChain b)
+  return (hash b1)
 
 verifyBlock :: Block -> Hash -> Maybe Hash
 verifyBlock b@(Block hdr txs) parentHash = do
