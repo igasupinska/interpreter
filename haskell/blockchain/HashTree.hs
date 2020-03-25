@@ -27,22 +27,39 @@ treeHash (Leaf x _) = x
 treeHash (Node x _ _) = x
 
 drawTree :: Show a => Tree a -> String
-drawTree t = drawTreeHelper 1 t ++ "\n"
+drawTree Empty = []
+drawTree t = drawTreeHelper 0 t ++ "\n"
 
 drawTreeHelper :: Show a => Int -> Tree a -> String
-drawTreeHelper i (Leaf h a) = showHash h ++ " " ++ show a
-drawTreeHelper i (Node a l Empty) = showHash a
+drawTreeHelper i (Leaf h a) = indentNewLine (2*i) ++ showHash h ++ " " ++ show a
+drawTreeHelper i (Node a l Empty) = indentNewLine (2*i)
+                                    ++ showHash a
                                     ++ " +"
-                                    ++ indentNewLine (2*i)
                                     ++ drawTreeHelper (i+1) l
-drawTreeHelper i (Node a l r) = showHash a
+drawTreeHelper i (Node a l r) = indentNewLine(2*i)
+                                ++ showHash a
                                 ++ " -"
-                                ++ indentNewLine (2*i)
                                 ++ drawTreeHelper (i+1) l
-                                ++ indentNewLine (2*i)
                                 ++ drawTreeHelper (i+1) r
 
+-- drawTree :: Show a => Tree a -> String
+-- drawTree Empty = []
+-- drawTree t = drawTreeHelper 0 t ++ "\n"
+
+-- drawTreeHelper :: Show a => Int -> Tree a -> String
+-- drawTreeHelper i (Leaf h a) = indentNewLine (2*i) ++ showHash h ++ " " ++ show a
+-- drawTreeHelper i (Node a l Empty) = indentNewLine (2*i)
+--                                     ++ showHash a
+--                                     ++ " +"
+--                                     ++ drawTreeHelper (i+1) l
+-- drawTreeHelper i (Node a l r) = indentNewLine(2*i)
+--                                 ++ showHash a
+--                                 ++ " -"
+--                                 ++ drawTreeHelper (i+1) l
+--                                 ++ drawTreeHelper (i+1) r
+
 indentNewLine :: Int -> String
+indentNewLine 0 = []
 indentNewLine n = "\n" ++ replicate n ' '
 
 -- part B
