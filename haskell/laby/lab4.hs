@@ -88,3 +88,19 @@ convert s = str
         printError e = Right $ reason e ++ show (location e)
 
 -- printError: ParseError -> Either ParseError String
+
+-- zadanie 4
+mySequence :: Monad m => [m a] -> m [a]
+mySequence [x] = do
+    a <- x
+    return [a]
+mySequence (x:xs) = do
+    a <- x
+    as <- mySequence xs
+    return (a:as)
+
+myMapM :: Monad m => (a -> m b) -> [a] -> m [b]
+myMapM f x = mySequence $ map f x 
+
+myForM :: Monad m => [a] -> (a -> m b) -> m [b]
+myForM l f = myMapM f l
