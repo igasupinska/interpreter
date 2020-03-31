@@ -46,7 +46,6 @@ indentNewLine :: Int -> String
 indentNewLine 0 = []
 indentNewLine n = "\n" ++ replicate n ' '
 
--- part B
 type MerklePath = [Either Hash Hash]
 data MerkleProof a = MerkleProof a MerklePath
 
@@ -88,48 +87,3 @@ verifyProofHelper (MerkleProof a [Left p]) = combine (hash a) p
 verifyProofHelper (MerkleProof a [Right p]) = combine p (hash a)
 verifyProofHelper (MerkleProof a (Left p:ps)) = combine (verifyProofHelper (MerkleProof a ps)) p
 verifyProofHelper (MerkleProof a (Right p:ps)) = combine p (verifyProofHelper (MerkleProof a ps))
-
--- usunąć, moje testy
-{- |
->>> putStr $ drawTree $ buildTree "fubar"
-0x2e1cc0e4 -
-  0xfbfe18ac -
-    0x6600a107 -
-      0x00000066 'f'
-      0x00000075 'u'
-    0x62009aa7 -
-      0x00000062 'b'
-      0x00000061 'a'
-  0xd11bea20 +
-    0x7200b3e8 +
-      0x00000072 'r'
-
->>> print $ drawTree $ buildTree "a"
-"0x00000061 'a'\n"
-
->>> buildProof 'e' $ buildTree "bitcoin"
-Nothing
-
->>> let t = buildTree "bitcoin"
->>> let proof = buildProof 'i' t
->>> verifyProof (treeHash t) <$> proof
-Just True
-
->>> verifyProof 0xbada55bb <$> proof
-Just False
-
->>> merklePaths 'i' $ buildTree "bitcoin"
-[[Left 1377068650,Left 1946203903,Right 98],[Right 1777612924,Left 1845538200,Right 111]]
-
->>> buildProof 'i' $ buildTree "bitcoin"
-Just (MerkleProof 'i' <0x5214666a<0x7400b6ff>0x00000062)
-
->>> mapM_ print $ map showMerklePath $ merklePaths 'i' $ buildTree "bitcoin"
-"<0x5214666a<0x7400b6ff>0x00000062"
-">0x69f4387c<0x6e00ad98>0x0000006f"
--}
-
-
-
-
-
