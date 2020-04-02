@@ -82,7 +82,10 @@ data Exp
   | ELet String Exp Exp  -- let var = e1 in e2 
 
 instance Eq Exp where
-    (EInt x) == (EInt y) = x == y 
+    (EInt x) == (EInt y) = x == y
+    (EInt x) == (EVar y) = False
+    (EVar y) == (EInt x) = False    
+    (EVar x) == (EVar y) = x == y
 
 instance Show Exp where
   show (EInt x) = show x    
@@ -108,18 +111,39 @@ simpl (EInt x) = EInt x
 simpl (EVar x) = EVar x
 simpl (EMul x y) = simplOnce (EMul (simpl x) (simpl y))
 simpl (EAdd x y) = simplOnce (EAdd (simpl x) (simpl y))
+simpl (ESub x y) = simplOnce (ESub (simpl x) (simpl y))
 
 simplOnce :: Exp -> Exp
 simplOnce (EMul (EInt 1) y) = simpl y
 simplOnce (EMul y (EInt 1)) = simpl y
 simplOnce (EMul (EInt 0) _) = EInt 0
 simplOnce (EMul _ (EInt 0)) = EInt 0
+simplOnce (EMul (EInt x) (EInt y)) = EInt (x * y)
+simplOnce (EMul x (EAdd y z)) = simpl (EAdd (EMul x y) (EMul x z))
+-- simplOnce (EMul (EInt x) (EAdd y z)) = simplOnce (EAdd (EMul (EInt x)))
+-- simplOnce (EMul (EInt x) ())
+simplOnce (EMul y (EInt x)) = simplOnce (EMul (EInt x) y)
 simplOnce (EMul x y) = EMul x y
 simplOnce (EAdd (EInt 0) x) = simpl x
 simplOnce (EAdd x (EInt 0)) = simpl x
+simplOnce (EAdd (EInt x) (EInt y)) = EInt (x + y)
 simplOnce (EAdd x y) = EAdd x y
+simplOnce (ESub (EInt 0) (EInt y)) = EInt (-y)
+simplOnce (ESub y (EInt 0)) = y
+simplOnce (ESub (EInt x) (EInt y)) = EInt (x - y)
+simplOnce (ESub x y) = ESub x y
 
 testExp2 :: Exp
 testExp2 = (2 + 2) * 3
 
+deriv :: String -> Exp -> Exp
+deriv x e = derivSimpl x (simpl e)
 
+derivSimpl :: String -> Exp -> Exp
+derivSimpl x (EInt _) = EInt 0
+derivSimpl x (EVar y) = if x == y then EInt 1 else EInt 0
+derivSimpl x (EAdd e1 e2) = EAdd (derivSimpl x e1) (derivSimpl x e2)
+derivSimpl x (EMul e1 e2)
+    | e1 == EVar x = simpl (EMul e1 (ESub e2 (EInt 1)))
+    | e2 == EVar x = simpl (EMul (ESub e1 (EInt 1)) e2)
+    | otherwise = EMul (deriv x e1) (deriv x e2)
