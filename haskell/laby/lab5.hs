@@ -1,14 +1,13 @@
 import Control.Monad.Reader
+import Control.Monad.State.Lazy
 import Data.Map
 import Prelude hiding (lookup)
-
 
 -- task 1
 
 -- allPairs :: [a] -> [a] -> [[a]]
 
 -- task 2
-
 -- 2a
 data Tree a = Empty | Node a (Tree a) (Tree a) deriving (Eq, Ord, Show)
 
@@ -66,3 +65,18 @@ doOp OpSub a b = a - b
 
 lookupVar :: String -> Env -> Int
 lookupVar name env = maybe 0 id (lookup name env)
+
+-- task 3
+-- 3a
+
+renumberTree :: Tree a -> Tree Int
+renumberTree t = evalState (renumberTreeHelper t) (0::Int)
+
+renumberTreeHelper :: Tree a -> State Int (Tree Int)
+renumberTreeHelper Empty = return Empty
+renumberTreeHelper (Node _ l r) = do
+    left <- renumberTreeHelper l
+    s <- get
+    modify (+1)
+    right <- renumberTreeHelper r
+    return (Node s left right)
