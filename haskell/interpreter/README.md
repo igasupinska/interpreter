@@ -5,15 +5,15 @@
 Program w tym języku jest listą definicji funkcji. Wykonanie programu zaczyna się od obowiązkowej funkcji main typu int, nie przyjmującej argumentów.
 Funkcje definiowane są jako typ zwracanej wartości, nazwa, lista argumentów i ciało funkcji. Funkcje o typie wyniku innym niż void, zwracają wartość za pomocą instrukcji return. Parametry do funkcji przekazywane są przez wartość lub przez zmienną.
 
+entrypoints Program ;
 Program.   Program ::= [TopDef] ;
-FnDef.	   TopDef ::= Type Ident "(" [Arg] ")" Block ;
-separator nonempty TopDef "" ;
-Arg. 	   Arg ::= Type Ident;
-separator  Arg "," ;
+FnDef.     TopDef ::= Type Ident "(" [ArgOrRef] ")" Block ;
+Arg.       ArgOrRef ::= Type Ident ;
+RefArg.    ArgOrRef ::= "ref" Type Ident ;
 
 ## Instrukcje
 /* to do */
-Instrukcje: pusta, złożona, if, while, return jak w C/Javie. Dodatkowo instrukcjami są przypisanie.
+Instrukcje: pusta, złożona, if, while, return jak w C/Javie. Dodatkowymi instrukcjami są przypisanie.
 
 Deklaracje zmiennych mogą występować w dowolnym miejscu bloku, jednak każda zmienna musi być zadeklarowana przed użyciem. Jeśli zmienna nie jest jawnie inicjalizowana w momencie deklaracji, jest inicjalizowana wartością domyślną (0 dla int, "" dla string, false dla bool).
 
@@ -66,26 +66,25 @@ Dostępne są standardowe operatory jak w języku C, tj.:
 * operatory logiczne: `!`, `&&`, `||`.
 
 ## Wyrażenia
-/*to do*/
-Podzbiór zbioru wyrażeń dostępnych w Javie:
-EVar.      Expr6 ::= Ident ;
-ELitInt.   Expr6 ::= Integer ;
-ELitTrue.  Expr6 ::= "true" ;
-ELitFalse. Expr6 ::= "false" ;
-EApp.      Expr6 ::= Ident "(" [ExprOrRef] ")" ;
-EString.   Expr6 ::= String ;
-ArrAcc.    Expr5 ::= Ident "[" Expr6 "]" ;
-Neg.       Expr5 ::= "-" Expr6 ;
-Not.       Expr5 ::= "!" Expr6 ;
-EMul.      Expr4 ::= Expr4 MulOp Expr5 ;
-EAdd.      Expr3 ::= Expr3 AddOp Expr4 ;
-ERel.      Expr2 ::= Expr2 RelOp Expr3 ;
-EAnd.      Expr1 ::= Expr2 "&&" Expr1 ;
-EOr.       Expr ::= Expr1 "||" Expr ;
-ERefArg.   ExprOrRef ::= "ref" Ident ;
-EExpArg.   ExprOrRef ::= Expr ;
+Wyrażenia stanowią podzbiór zbioru wyrażeń dostępnych w C/Javie:
+    EVar.      Expr6 ::= Ident ;
+    ELitInt.   Expr6 ::= Integer ;
+    ELitTrue.  Expr6 ::= "true" ;
+    ELitFalse. Expr6 ::= "false" ;
+    EApp.      Expr6 ::= Ident "(" [ExprOrRef] ")" ;
+    EString.   Expr6 ::= String ;
+    ArrAcc.    Expr5 ::= Ident "[" Expr6 "]" ;
+    Neg.       Expr5 ::= "-" Expr6 ;
+    Not.       Expr5 ::= "!" Expr6 ;
+    EMul.      Expr4 ::= Expr4 MulOp Expr5 ;
+    EAdd.      Expr3 ::= Expr3 AddOp Expr4 ;
+    ERel.      Expr2 ::= Expr2 RelOp Expr3 ;
+    EAnd.      Expr1 ::= Expr2 "&&" Expr1 ;
+    EOr.       Expr ::= Expr1 "||" Expr ;
+    ERefArg.   ExprOrRef ::= "ref" Ident ;
+    EExpArg.   ExprOrRef ::= Expr ;
 
-Wyrażenie logiczne obliczane są leniwie.
+Wyrażenia logiczne obliczane są leniwie. Podczas aplikacji funkcji, parametry przekazywane przez referencję poprzedzane są słówkiem kluczowym `ref`.
 
 ## Tabelka cech
 
