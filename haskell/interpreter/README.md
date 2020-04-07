@@ -5,11 +5,11 @@
 Program w tym języku jest listą definicji funkcji. Wykonanie programu zaczyna się od obowiązkowej funkcji main typu int, nie przyjmującej argumentów.
 Funkcje definiowane są jako typ zwracanej wartości, nazwa, lista argumentów i ciało funkcji. Funkcje o typie wyniku innym niż void, zwracają wartość za pomocą instrukcji return. Parametry do funkcji przekazywane są przez wartość lub przez zmienną.
 
-entrypoints Program ;
-Program.   Program ::= [TopDef] ;
-FnDef.     TopDef ::= Type Ident "(" [ArgOrRef] ")" Block ;
-Arg.       ArgOrRef ::= Type Ident ;
-RefArg.    ArgOrRef ::= "ref" Type Ident ;
+    entrypoints Program ;
+    Program.   Program ::= [TopDef] ;
+    FnDef.     TopDef ::= Type Ident "(" [ArgOrRef] ")" Block ;
+    Arg.       ArgOrRef ::= Type Ident ;
+    RefArg.    ArgOrRef ::= "ref" Type Ident ;
 
 ## Instrukcje
 /* to do */
