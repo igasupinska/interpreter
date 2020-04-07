@@ -1,11 +1,9 @@
 # Opis języka
-/* to do */
 
 ## Struktura programu
-/* to do */
-Program w języku Latte jest listą definicji funkcji. Na definicję funkcji składa się typ zwracanej wartości, nazwa, lista argumentów oraz ciało. Funkcje muszą mieć unikalne nazwy. W programie musi wystąpić funkcja o nazwie main zwracająca int i nie przyjmująca argumentów (od niej zaczyna się wykonanie programu). Funkcje o typie wyniku innym niż void muszą zwracać wartość za pomocą instrukcji return
 
-Funkcje mogą być wzajemnie rekurencyjne; co za tym idzie mogą być definiowane w dowolnej kolejności (użycie funkcji może występować przed jej definicją)
+Program w tym języku jest listą definicji funkcji. Wykonanie programu zaczyna się od obowiązkowej funkcji main typu int, nie przyjmującej argumentów.
+Funkcje definiowane są jako typ zwracanej wartości, nazwa, lista argumentów i ciało funkcji. Funkcje o typie wyniku innym niż void, zwracają wartość za pomocą instrukcji return. Parametry do funkcji przekazywane są przez wartość lub przez zmienną.
 
 Program.   Program ::= [TopDef] ;
 FnDef.	   TopDef ::= Type Ident "(" [Arg] ")" Block ;
@@ -15,37 +13,46 @@ separator  Arg "," ;
 
 ## Instrukcje
 /* to do */
-Instrukcje: pusta,złożona,if,while,return jak w C/Javie. Dodatkowo instrukcjami są przypisanie, postinkrementacja, postdekrementacja (w wersji podstawowej języka l-wartościami są tylko zmienne).
+Instrukcje: pusta, złożona, if, while, return jak w C/Javie. Dodatkowo instrukcjami są przypisanie.
+
 Deklaracje zmiennych mogą występować w dowolnym miejscu bloku, jednak każda zmienna musi być zadeklarowana przed użyciem. Jeśli zmienna nie jest jawnie inicjalizowana w momencie deklaracji, jest inicjalizowana wartością domyślną (0 dla int, "" dla string, false dla bool).
 
 Zmienne zadeklarowane w bloku nie są widoczne poza nim i przesłaniają zmienne o tej samej nazwie spoza bloku. W obrębie bloku zmienne muszą mieć unikalne nazwy.
 
-Block.     Block ::= "{" [Stmt] "}" ;
-separator  Stmt "" ;
-Empty.     Stmt ::= ";" ;
-BStmt.     Stmt ::= Block ;
-Decl.      Stmt ::= Type [Item] ";" ;
-NoInit.    Item ::= Ident ;
-Init.      Item ::= Ident "=" Expr ;
-separator nonempty Item "," ;
-Ass.       Stmt ::= Ident "=" Expr  ";" ;
-Incr.      Stmt ::= Ident "++"  ";" ;
-Decr.      Stmt ::= Ident "--"  ";" ;
-Ret.       Stmt ::= "return" Expr ";" ;
-VRet.      Stmt ::= "return" ";" ;
-Cond.      Stmt ::= "if" "(" Expr ")" Stmt  ;
-CondElse.  Stmt ::= "if" "(" Expr ")" Stmt "else" Stmt  ;
-While.     Stmt ::= "while" "(" Expr ")" Stmt ;
-SExp.      Stmt ::= Expr  ";" ;
+Tablice deklarowane są `array<typ> nazwa_tablicy(rozmiar)`. W przypadku braku inicjalizacji, tablica wypełniana jest domyślnymi wartościami dla ustalonego typu. Tablica może zostać zainicjowana listą inicjalizacyjną, np. `array<int> days(5) {1,2,3,4,5}`.
+
+    separator  Stmt ";" ;
+    Block.     Block ::= "{" [Stmt] "}" ;
+    BStmt.     Stmt ::= Block ;
+    Decl.      Stmt ::= Type Item ;
+    NoInit.    Item ::= Ident ; 
+    Init.      Item ::= Ident "=" Expr ;
+    ArrNoInit. Item ::= Ident "(" Expr ")" ;
+    ArrInit.   Item ::= Ident "(" Expr ")" "{" [Expr] "}" ;
+    separator nonempty Item "," ;
+    Ass.       Stmt ::= Ident "=" Expr ;
+    Ret.       Stmt ::= "return" Expr ;
+    VRet.      Stmt ::= "return" ;
+    Cond.      Stmt ::= "if" "(" Expr ")" Block;
+    CondElse.  Stmt ::= "if" "(" Expr ")" Block "else" Block  ;
+    While.     Stmt ::= "while" "(" Expr ")" Block ;
+    For.       Stmt ::= "for" "(" Ident "from" Expr "to" Expr ")" Block ;
+    Print.     Stmt ::= "print" Expr ;
+    SExp.      Stmt ::= Expr ;
+    Break.     Stmt ::= "break" ;
+    Cont.      Stmt ::= "continue" ;
 
 ## Typy
 
-Typy int, void jak w Javie; string odpowiada String, bool odpowiada boolean. Nie ma konwersji pomiedzy typami.
+Typy int, void jak w Javie; string odpowiada String, bool odpowiada boolean. Tablice statyczne. Nie ma rzutowania na inny typ.
 
     Int.       Type ::= "int" ;
     Str.       Type ::= "string" ;
     Bool.      Type ::= "bool" ;
     Void.      Type ::= "void" ;
+    Arr.       Type ::= "array" "<" Type ">" ;
+
+Tablice mogą być dowolnego typu, w tym także przechowywać inne tablice. Możliwy jest dostęp do elementu pod zadanym indeksem poprzez `nazwa_tablicy[indeks]`.
  
  W przypadku deklaracji zmiennych bez inicjalizacji, ustalone są domyślne wartości dla typów, tj.:
 * `int` --> `0`
@@ -58,7 +65,6 @@ Dostępne są standardowe operatory jak w języku C, tj.:
 * operatory porównania: `<`, `<=`, `>`, `>=`, `==`, `!=`,
 * operatory logiczne: `!`, `&&`, `||`.
 
-
 ## Wyrażenia
 /*to do*/
 Podzbiór zbioru wyrażeń dostępnych w Javie:
@@ -66,8 +72,9 @@ EVar.      Expr6 ::= Ident ;
 ELitInt.   Expr6 ::= Integer ;
 ELitTrue.  Expr6 ::= "true" ;
 ELitFalse. Expr6 ::= "false" ;
-EApp.      Expr6 ::= Ident "(" [Expr] ")" ;
+EApp.      Expr6 ::= Ident "(" [ExprOrRef] ")" ;
 EString.   Expr6 ::= String ;
+ArrAcc.    Expr5 ::= Ident "[" Expr6 "]" ;
 Neg.       Expr5 ::= "-" Expr6 ;
 Not.       Expr5 ::= "!" Expr6 ;
 EMul.      Expr4 ::= Expr4 MulOp Expr5 ;
@@ -75,18 +82,11 @@ EAdd.      Expr3 ::= Expr3 AddOp Expr4 ;
 ERel.      Expr2 ::= Expr2 RelOp Expr3 ;
 EAnd.      Expr1 ::= Expr2 "&&" Expr1 ;
 EOr.       Expr ::= Expr1 "||" Expr ;
-Wyrażenie logiczne zwracają typ boolean i są obliczane leniwie (drugi argument nie jest wyliczany gdy pierwszy determinuje wartość wyrażenia).
+ERefArg.   ExprOrRef ::= "ref" Ident ;
+EExpArg.   ExprOrRef ::= Expr ;
 
-## Napisy
-/*to do*/
-Napisy podobnie jak w Javie, czyli zmienne typu string zawierają referencję do napisu, zaalokowanego na stercie.
-Napisy moga występować jako: literały, wartości zmiennych, argumentów i wyników funkcji
+Wyrażenie logiczne obliczane są leniwie.
 
-Napisy mogą być użyte jako argumenty wbudowanej funkcji printString
-
-Napisy mogą być konkatenowane przy pomocy operatora +. Wynikiem tej operacji jest nowy napis będący konkatenacją argumentów
-
-## 
 ## Tabelka cech
 
   Na 15 punktów | planowane | I iteracja | II iteracja
