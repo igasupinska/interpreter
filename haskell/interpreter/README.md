@@ -67,6 +67,7 @@ Dostępne są standardowe operatory jak w języku C, tj.:
 
 ## Wyrażenia
 Wyrażenia stanowią podzbiór zbioru wyrażeń dostępnych w C/Javie:
+  
     EVar.      Expr6 ::= Ident ;
     ELitInt.   Expr6 ::= Integer ;
     ELitTrue.  Expr6 ::= "true" ;
