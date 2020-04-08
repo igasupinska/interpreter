@@ -2,7 +2,7 @@
 
 ## Struktura programu
 
-Program w tym języku jest listą definicji funkcji. Wykonanie programu zaczyna się od obowiązkowej funkcji main typu int, nie przyjmującej argumentów.
+Program w tym języku (bazującym na Latte) jest listą definicji funkcji. Wykonanie programu zaczyna się od obowiązkowej funkcji main typu int, nie przyjmującej argumentów.
 Funkcje definiowane są jako typ zwracanej wartości, nazwa, lista argumentów i ciało funkcji. Funkcje o typie wyniku innym niż void, zwracają wartość za pomocą instrukcji return. Parametry do funkcji przekazywane są przez wartość lub przez zmienną.
 
     entrypoints Program ;
@@ -12,16 +12,16 @@ Funkcje definiowane są jako typ zwracanej wartości, nazwa, lista argumentów i
     RefArg.    ArgOrRef ::= "ref" Type Ident ;
 
 ## Instrukcje
-/* to do */
-Instrukcje: pusta, złożona, if, while, return jak w C/Javie. Dodatkowymi instrukcjami są przypisanie.
+Instrukcje języka takie jak instrukcja `pusta`, `if else`, `while` czy `return` przypominają instrukcje dostępne w C/Javie.
 
-Deklaracje zmiennych mogą występować w dowolnym miejscu bloku, jednak każda zmienna musi być zadeklarowana przed użyciem. Jeśli zmienna nie jest jawnie inicjalizowana w momencie deklaracji, jest inicjalizowana wartością domyślną (0 dla int, "" dla string, false dla bool).
+Wymagana jest deklaracja zmiennej przed jej użyciem. Zmienne zadeklarowane w bloku, widoczne są jedynie w tym bloku i przesłaniają zmienne spoza bloku. Zmienne w bloku muszą mieć unikalne nazwy.
 
-Zmienne zadeklarowane w bloku nie są widoczne poza nim i przesłaniają zmienne o tej samej nazwie spoza bloku. W obrębie bloku zmienne muszą mieć unikalne nazwy.
+Tablice deklarowane są `array<typ> nazwa_tablicy(rozmiar)`. W przypadku braku inicjalizacji, tablica wypełniana jest domyślnymi wartościami dla ustalonego typu. Tablica może zostać zainicjowana listą inicjalizacyjną, np. `array<int> nums(5) {1,2,3,4,5}`.
 
-Tablice deklarowane są `array<typ> nazwa_tablicy(rozmiar)`. W przypadku braku inicjalizacji, tablica wypełniana jest domyślnymi wartościami dla ustalonego typu. Tablica może zostać zainicjowana listą inicjalizacyjną, np. `array<int> days(5) {1,2,3,4,5}`.
+Pętla `for i from pocz to kon` wykonuje się `kon - pocz + 1` razy, o ile `kon >= pocz`. W przeciwnym wypadku, pętla nie wykonuje żadnego obrotu. `pocz` i `kon` muszą być wyrażeniami typu int; nie ma możliwości zmiany kroku pętli.
 
-    separator  Stmt ";" ;
+Dostępne są dwie operacje sterujące pętlą `while`: `break` oraz `continue`.
+
     Block.     Block ::= "{" [Stmt] "}" ;
     BStmt.     Stmt ::= Block ;
     Decl.      Stmt ::= Type Item ;
@@ -29,7 +29,6 @@ Tablice deklarowane są `array<typ> nazwa_tablicy(rozmiar)`. W przypadku braku i
     Init.      Item ::= Ident "=" Expr ;
     ArrNoInit. Item ::= Ident "(" Expr ")" ;
     ArrInit.   Item ::= Ident "(" Expr ")" "{" [Expr] "}" ;
-    separator nonempty Item "," ;
     Ass.       Stmt ::= Ident "=" Expr ;
     Ret.       Stmt ::= "return" Expr ;
     VRet.      Stmt ::= "return" ;
@@ -41,6 +40,8 @@ Tablice deklarowane są `array<typ> nazwa_tablicy(rozmiar)`. W przypadku braku i
     SExp.      Stmt ::= Expr ;
     Break.     Stmt ::= "break" ;
     Cont.      Stmt ::= "continue" ;
+
+Język udostępnia wbudowaną funkcję `print`, przyjmującą argument dowolnego dostępnego typu.
 
 ## Typy
 
