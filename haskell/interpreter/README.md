@@ -3,7 +3,7 @@
 ## Struktura programu
 
 Program w tym języku (bazującym na Latte) jest listą definicji funkcji. Wykonanie programu zaczyna się od obowiązkowej funkcji main typu int, nie przyjmującej argumentów.
-Funkcje definiowane są jako typ zwracanej wartości, nazwa, lista argumentów i ciało funkcji. Funkcje o typie wyniku innym niż void, zwracają wartość za pomocą instrukcji return. Parametry do funkcji przekazywane są przez wartość lub przez zmienną.
+Funkcje definiowane są jako typ zwracanej wartości, nazwa, lista argumentów i ciało funkcji. Funkcje o typie wyniku innym niż void, zwracają wartość za pomocą instrukcji return. Parametry do funkcji przekazywane są przez wartość lub przez zmienną. Funkcje muszą być zdefiniowane przed ich użyciem.
 
     entrypoints Program ;
     Program.   Program ::= [TopDef] ;
@@ -12,7 +12,7 @@ Funkcje definiowane są jako typ zwracanej wartości, nazwa, lista argumentów i
     RefArg.    ArgOrRef ::= "ref" Type Ident ;
 
 ## Instrukcje
-Instrukcje języka takie jak instrukcja `pusta`, `if else`, `while` czy `return` przypominają instrukcje dostępne w C/Javie.
+Instrukcje języka takie jak instrukcja `pusta`, `if else`, `while` czy `return` przypominają instrukcje dostępne w C/Javie. Ciało pętli `while` czy instrukcji `if else` obowiązkowo musi być otoczone nawiasami klamrowymi.
 
 Wymagana jest deklaracja zmiennej przed jej użyciem. Zmienne zadeklarowane w bloku, widoczne są jedynie w tym bloku i przesłaniają zmienne spoza bloku. Zmienne w bloku muszą mieć unikalne nazwy.
 
@@ -87,6 +87,67 @@ Wyrażenia stanowią podzbiór zbioru wyrażeń dostępnych w C/Javie:
     EExpArg.   ExprOrRef ::= Expr ;
 
 Wyrażenia logiczne obliczane są leniwie. Podczas aplikacji funkcji, parametry przekazywane przez referencję poprzedzane są słówkiem kluczowym `ref`.
+
+## Przykładowe programy
+
+### Hello world
+
+    int main() {
+        print("Hello world!");
+        return 0;
+    }
+    
+### Liczby Fibonacciego na dwa sposoby
+
+    int fib(int num) {
+        if (num == 0 || num == 1) {
+            return num;
+        }
+        
+        array<int> fibSeries(num+1);
+        fibSeries[0] = 1;
+        fibSeries[1] = 1;
+        
+        int i;
+        for (i from 2 to num) {
+            fibSeries[i] = fibSeries[i-1] + fibSeries[i-2];
+        }
+        
+        return fibSeries[num];
+    }
+    
+    int fibR(int num) {
+        if (num == 0 || num == 1) {
+            return num;
+        } else {
+            return (fibR(num-1) + fibR(num-2));
+        }
+    }
+
+    int main() {
+        
+        print("Piąta liczba Fibonacciego to: ");
+        print(fib(5));
+        
+        print("Siódma liczba Fibonacciego to: ");
+        print(fibR(7));
+        
+        return 0;
+    }
+    
+### Przekazywanie przez referencję
+
+    void increment(ref int num) {
+        num = num + 1;
+    }
+    
+    int main() {
+        int num;
+        increment(ref num);
+        print(num); //outputs 1
+        return 0;
+    }
+
 
 ## Tabelka cech
 
