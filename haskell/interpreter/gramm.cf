@@ -4,21 +4,23 @@ entrypoints Program ;
 
 Program.   Program ::= [TopDef] ;
 
-FnDef.	   TopDef ::= Type Ident "(" [Arg] ")" "{" [Stmt] "}" ;
+FnDef.     TopDef ::= Type Ident "(" [ArgOrRef] ")" Block ;
 
 separator nonempty TopDef "" ;
 
-Arg. 	   Arg ::= Type Ident;
+Arg.       ArgOrRef ::= Type Ident ;
 
-separator  Arg "," ;
+RefArg.    ArgOrRef ::= "ref" Type Ident ;
 
--- Iga: to całe - spojrzeć, bo nie poprawione
+separator  ArgOrRef "," ;
 
 -- statements ----------------------------------------------
 
 separator  Stmt ";" ;
 
-Empty.     Stmt ::= "" ;
+Block.     Block ::= "{" [Stmt] "}" ;
+
+BStmt.     Stmt ::= Block ;
 
 Decl.      Stmt ::= Type Item ;
 
@@ -26,28 +28,45 @@ NoInit.    Item ::= Ident ;
 
 Init.      Item ::= Ident "=" Expr ;
 
+ArrNoInit. Item ::= Ident "(" Expr ")" ;
+
+ArrInit.   Item ::= Ident "(" Expr ")" "{" [Expr] "}" ;
+
+separator nonempty Item "," ;
+
 Ass.       Stmt ::= Ident "=" Expr ;
 
 Ret.       Stmt ::= "return" Expr ;
 
 VRet.      Stmt ::= "return" ;
 
-Cond.      Stmt ::= "if" "(" Expr ")" "{" [Stmt] "}"  ;
+Cond.      Stmt ::= "if" "(" Expr ")" Block;
 
-CondElse.  Stmt ::= "if" "(" Expr ")" "{" [Stmt] "}" "else" "{" [Stmt] "}"  ;
+CondElse.  Stmt ::= "if" "(" Expr ")" Block "else" Block  ;
 
-While.     Stmt ::= "while" "(" Expr ")" "{" [Stmt] "}" ; -- Iga: tu może BExpr?
+While.     Stmt ::= "while" "(" Expr ")" Block ;
 
-For.       Stmt ::= "for" Ident "from" Expr "to" Expr "do" "{" [Stmt] "}" ;
+For.       Stmt ::= "for" "(" Ident "from" Expr "to" Expr ")" Block ;
 
 Print.     Stmt ::= "print" Expr ;
 
-SExp.      Stmt ::= Expr ; -- Iga: co to jest?
+SExp.      Stmt ::= Expr ;
+
+Break.     Stmt ::= "break" ;
+
+Cont.      Stmt ::= "continue" ;
 
 -- Types ---------------------------------------------------
+
 Int.       Type ::= "int" ;
+
 Str.       Type ::= "string" ;
+
 Bool.      Type ::= "bool" ;
+
+Void.      Type ::= "void" ;
+
+Arr.       Type ::= "array" "<" Type ">" ;
 
 separator  Type "," ;
 
@@ -61,9 +80,11 @@ ELitTrue.  Expr6 ::= "true" ;
 
 ELitFalse. Expr6 ::= "false" ;
 
-EApp.      Expr6 ::= Ident "(" [Expr] ")" ; -- Iga: tu spojrzeć
+EApp.      Expr6 ::= Ident "(" [ExprOrRef] ")" ;
 
 EString.   Expr6 ::= String ;
+
+ArrAcc.    Expr5 ::= Ident "[" Expr6 "]" ;
 
 Neg.       Expr5 ::= "-" Expr6 ;
 
@@ -83,22 +104,40 @@ coercions  Expr 6 ;
 
 separator  Expr "," ;
 
+ERefArg.   ExprOrRef ::= "ref" Ident ;
+
+EExpArg.   ExprOrRef ::= Expr ;
+
+separator  ExprOrRef "," ;
+
 -- operators -----------------------------------------------
 
 Plus.      AddOp ::= "+" ;
+
 Minus.     AddOp ::= "-" ;
+
 Times.     MulOp ::= "*" ;
+
 Div.       MulOp ::= "/" ;
+
 Mod.       MulOp ::= "%" ;
+
 LTH.       RelOp ::= "<" ;
+
 LE.        RelOp ::= "<=" ;
+
 GTH.       RelOp ::= ">" ;
+
 GE.        RelOp ::= ">=" ;
+
 EQU.       RelOp ::= "==" ;
+
 NE.        RelOp ::= "!=" ;
 
 -- comments ------------------------------------------------
 
 comment    "#" ;
+
 comment    "//" ;
+
 comment    "/*" "*/" ;
