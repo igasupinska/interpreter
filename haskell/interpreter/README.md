@@ -148,6 +148,25 @@ Wyrażenia logiczne obliczane są leniwie. Podczas aplikacji funkcji, parametry 
         return 0;
     }
 
+### Widoczność w blokach
+
+    int main() {
+        int x = 1;
+        int y = 2;
+        
+        {
+            x = 4;
+            int y = 5; //nowe y
+            
+            print(x); //4
+            print(y); //5
+        }
+        
+        print(x); //4
+        print(y); //2
+
+        return 0;
+    }
 
 ## Tabelka cech
 
