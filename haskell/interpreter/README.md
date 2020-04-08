@@ -129,6 +129,8 @@ Wyrażenia logiczne obliczane są leniwie. Podczas aplikacji funkcji, parametry 
         print("Piąta liczba Fibonacciego to: ");
         print(fib(5));
         
+        print("\n");
+        
         print("Siódma liczba Fibonacciego to: ");
         print(fibR(7));
         
