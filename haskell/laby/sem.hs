@@ -4,7 +4,7 @@ import Data.Map
 import Prelude hiding (lookup)
 
 -----------------------------------------------
--- TINY with expressions and basic statements 
+-- TINY with expressions, basic statements 
 -----------------------------------------------
 
 type Var = String
