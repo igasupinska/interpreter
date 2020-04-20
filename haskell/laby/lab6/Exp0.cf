@@ -1,0 +1,3 @@
+EAdd . Exp  ::= Exp "+" Exp1;
+_    . Exp  ::= Exp1;
+EInt . Exp1 ::= Integer;

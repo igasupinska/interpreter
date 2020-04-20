@@ -1,0 +1,37 @@
+int fib(int num) {
+    if (num == 0 || num == 1) {
+        return num;
+    }
+    
+    array<int> fibSeries(num+1);
+    fibSeries[0] = 1;
+    fibSeries[1] = 1;
+    
+    int i;
+    for (i from 2 to num) {
+        fibSeries[i] = fibSeries[i-1] + fibSeries[i-2];
+    }
+    
+    return fibSeries[num];
+}
+
+int fibR(int num) {
+    if (num == 0 || num == 1) {
+        return num;
+    } else {
+        return (fibR(num-1) + fibR(num-2));
+    }
+}
+
+int main() {
+    
+    print("Piąta liczba Fibonacciego to: ");
+    print(fib(5));
+    
+    print("\n");
+    
+    print("Siódma liczba Fibonacciego to: ");
+    print(fibR(7));
+    
+    return 0;
+}
