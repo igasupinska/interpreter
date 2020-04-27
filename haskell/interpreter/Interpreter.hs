@@ -16,8 +16,14 @@ module Interpreter where
     lookupVar :: Ident -> Env -> Loc
     lookupVar name env = maybe 0 id (lookup name env)
 
+    insertVar :: Ident -> Loc -> Env -> Env
+    insertVar name loc env = insert name loc env
+
     lookupStore :: Loc -> Store -> StoredVal
     lookupStore loc store = fromMaybe (SInt 0) (lookup loc store)
+
+    insertStore :: Loc -> StoredVal -> Store -> Store
+    insertStore loc val store = insert loc val store
 
 --------------------------------------------------
 ----------------- EXPRESSIONS --------------------
@@ -25,10 +31,10 @@ module Interpreter where
 
     evalExpr :: Expr -> MM (StoredVal)
 
-    -- evalExpr (EVar ident) = do
-    --     loc <- asks (lookupVar ident)
-    --     val <- 
-    --     return $ (SInt loc)
+    evalExpr (EVar ident) = do
+        loc <- asks (lookupVar ident)
+        val <- gets (lookupStore loc)
+        return val
     
     --int expr
     evalExpr (ELitInt x) = return $ SInt x
@@ -114,8 +120,21 @@ module Interpreter where
 
     execStmt :: Stmt -> MM (Maybe StoredVal)
     execStmt (BStmt b) = undefined
-    execStmt (Decl t e) = undefined
-    execStmt (Ass v e) = undefined
+    
+    execStmt (Decl t (NoInit ident)) = do
+        -- loc <- 1 --Iga: powinna być jakaś funkcja newloc
+        asks (insertVar ident 1)
+        execStmt VRet --Iga:tymczasowo
+   
+    execStmt (Decl t (Init ident expr)) = do
+        execStmt (Decl t (NoInit ident))
+        execStmt (Ass ident expr)
+
+    execStmt (Ass ident e) = do
+        val <- evalExpr e
+        loc <- asks (lookupVar ident)
+        modify (insertStore loc val)
+        execStmt VRet --Iga:tymczasowo
     
     execStmt (Ret e) = do
         expr <- evalExpr e
@@ -162,11 +181,15 @@ module Interpreter where
 
     interpretFun :: Program -> MM (Maybe StoredVal)
     interpretFun (Program [FnDef Int f as (Block s)]) = interpret s
-    interpretFun (Program (d:ds)) = interpretFun (Program [d])
+    interpretFun (Program (d:ds)) = do 
+                    interpretFun (Program [d])
+                    interpretFun (Program ds)
 
     interpret :: [Stmt] -> MM (Maybe StoredVal)
-    interpret [] = undefined
-    interpret (s:xs) = execStmt s
+    interpret [s] = execStmt s
+    interpret (s:xs) = do
+        execStmt s
+        interpret xs
     
     runProg prog = runState (runReaderT (interpretFun prog) Map.empty) (Map.empty) --Iga: skopiowane
 
