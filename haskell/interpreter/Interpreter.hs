@@ -162,7 +162,12 @@ module Interpreter where
             SBool True -> execStmt (Cond e b) >> execStmt (While e b)
             SBool False -> execStmt VRet
 
-    execStmt (For v start end b) = undefined
+    --Iga: przepisać jako while z dodatkową instrukcją i -= 1
+    execStmt (For v start end (Block b)) = do
+        execStmt $ Decl Int (Init v start)
+        let incr = Ass v (EAdd (EVar v) Plus (ELitInt 1)) in
+            execStmt $ While (ERel (EVar v) LTH end) (Block (incr:b))
+
     
     execStmt (Print e) = do
         expr <- evalExpr e
@@ -178,6 +183,7 @@ module Interpreter where
                         execStmt VRet --Iga: tymczasowo
     
     execStmt (SExp e) = undefined
+    
     execStmt (Break) = undefined
     execStmt (Cont) = undefined
 
