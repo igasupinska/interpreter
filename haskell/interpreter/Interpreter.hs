@@ -118,8 +118,10 @@ module Interpreter where
 ------------------ STATEMENTS --------------------
 --------------------------------------------------
 
-    execStmt :: Stmt -> MM (Maybe StoredVal)
-    execStmt (BStmt b) = undefined
+    execStmt :: Stmt -> MM (Maybe StoredVal)    
+    execStmt (BStmt (Block [s])) = execStmt s
+    execStmt (BStmt (Block (s:ss))) =
+        (execStmt s) >> execStmt (BStmt (Block ss))
     
     execStmt (Decl t (NoInit ident)) = do
         -- loc <- 1 --Iga: powinna być jakaś funkcja newloc
@@ -154,7 +156,12 @@ module Interpreter where
             SBool True  -> execStmt $ BStmt if_b
             SBool False -> execStmt $ BStmt else_b
 
-    execStmt (While e b) = undefined
+    execStmt (While e b) = do
+        expr <- evalExpr e
+        case expr of
+            SBool True -> execStmt (Cond e b) >> execStmt (While e b)
+            SBool False -> execStmt VRet
+
     execStmt (For v start end b) = undefined
     
     execStmt (Print e) = do
