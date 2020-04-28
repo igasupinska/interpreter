@@ -7,23 +7,35 @@ module Interpreter where
     import Data.Maybe
     import Prelude hiding (lookup)
     
-    data StoredVal = SInt Integer | SStr String | SBool Bool -- Iga: co z tablicami? Iga: czy to nie widzne, ze piszesz ze soba?
+    data StoredVal = SInt Integer | SStr String | SBool Bool -- Iga: co z tablicami?
 
     type Loc = Integer
-    type Store = Map Loc StoredVal
-    type Env = Map Ident Loc
+    type Store = (Map Loc StoredVal, Loc)
+    type VEnv = Map Ident Loc
+    type FEnv = Map Ident TopDef
 
-    lookupVar :: Ident -> Env -> Loc
+    getNewLoc :: Store -> Store
+    getNewLoc (store, lastLoc) = (store, lastLoc + 1)
+
+    lookupVar :: Ident -> VEnv -> Loc
     lookupVar name env = maybe 0 id (lookup name env)
 
-    insertVar :: Ident -> Loc -> Env -> Env
+    insertVar :: Ident -> Loc -> VEnv -> VEnv
     insertVar name loc env = insert name loc env
 
+-- Iga: data TopDef = FnDef Type Ident [ArgOrRef] Block
+--Iga: tu zmienić
+    lookupFun :: Ident -> FEnv -> TopDef
+    lookupFun ident fenv = fromMaybe (FnDef Int (Ident "funkcja") [] (Block [])) (lookup ident fenv)
+
+    insertFun :: Ident -> TopDef -> FEnv -> FEnv
+    insertFun ident def fenv = insert ident def fenv
+
     lookupStore :: Loc -> Store -> StoredVal
-    lookupStore loc store = fromMaybe (SInt 0) (lookup loc store)
+    lookupStore loc (store, _) = fromMaybe (SInt 0) (lookup loc store)
 
     insertStore :: Loc -> StoredVal -> Store -> Store
-    insertStore loc val store = insert loc val store
+    insertStore loc val (store, lastLoc) = (insert loc val store, lastLoc + 1)
 
 --------------------------------------------------
 ----------------- EXPRESSIONS --------------------
@@ -32,8 +44,8 @@ module Interpreter where
     evalExpr :: Expr -> MM (StoredVal)
 
     evalExpr (EVar ident) = do
-        loc <- asks (lookupVar ident)
-        val <- gets (lookupStore loc)
+        (venv, fenv) <- ask
+        val <- gets (lookupStore (lookupVar ident venv))
         return val
     
     --int expr
@@ -107,8 +119,20 @@ module Interpreter where
             False -> evalExpr e2
 
     -- --function expr
-    -- evalExpr (EApp fun (ERefArg a:as)) = undefined
-    -- evalExpr (EApp fun (EExpArg a:as)) = undefined
+
+    --Iga: data TopDef = FnDef Type Ident [ArgOrRef] Block
+
+    evalExpr (EApp fun []) = do
+        (venv, fenv) <- ask
+        let (FnDef typ ident args funBody) = lookupFun fun fenv
+        (venv2, fenv2, val) <- execStmt $ BStmt funBody
+        case val of
+            Just i -> return i
+            Nothing -> return $ SInt 0 --Iga: tu poprawić
+
+    evalExpr (EApp fun (ERefArg a:as)) = evalExpr (EApp fun as)
+
+    evalExpr (EApp fun (EExpArg a:as)) = undefined
 
     -- --array expr
     -- evalExprHelper (ArrAcc a e) = undefined
@@ -118,15 +142,17 @@ module Interpreter where
 ------------------ STATEMENTS --------------------
 --------------------------------------------------
 
-    execStmt :: Stmt -> MM (Maybe StoredVal)    
+    execStmt :: Stmt -> MM (VEnv, FEnv, Maybe StoredVal)    
     execStmt (BStmt (Block [s])) = execStmt s
     execStmt (BStmt (Block (s:ss))) =
         (execStmt s) >> execStmt (BStmt (Block ss))
     
     execStmt (Decl t (NoInit ident)) = do
         -- loc <- 1 --Iga: powinna być jakaś funkcja newloc
-        asks (insertVar ident 1)
-        execStmt VRet --Iga:tymczasowo
+        (s, loc) <- get
+        modify (getNewLoc)
+        (venv, fenv) <- ask
+        return (insertVar ident loc venv, fenv, Nothing)
    
     execStmt (Decl t (Init ident expr)) = do
         execStmt (Decl t (NoInit ident))
@@ -134,15 +160,18 @@ module Interpreter where
 
     execStmt (Ass ident e) = do
         val <- evalExpr e
-        loc <- asks (lookupVar ident)
-        modify (insertStore loc val)
+        (venv, fenv) <- ask
+        modify (insertStore (lookupVar ident venv) val)
         execStmt VRet --Iga:tymczasowo
     
     execStmt (Ret e) = do
+        (venv, fenv) <- ask
         expr <- evalExpr e
-        return $ Just expr
+        return (venv, fenv, Just expr)
 
-    execStmt (VRet) = return Nothing
+    execStmt (VRet) = do
+        (venv, fenv) <- ask
+        return (venv, fenv, Nothing)
     
     execStmt (Cond e b) = do
         expr <- evalExpr e
@@ -162,27 +191,29 @@ module Interpreter where
             SBool True -> execStmt (Cond e b) >> execStmt (While e b)
             SBool False -> execStmt VRet
 
-    --Iga: przepisać jako while z dodatkową instrukcją i -= 1
     execStmt (For v start end (Block b)) = do
         execStmt $ Decl Int (Init v start)
         let incr = Ass v (EAdd (EVar v) Plus (ELitInt 1)) in
             execStmt $ While (ERel (EVar v) LTH end) (Block (incr:b))
 
     
-    execStmt (Print e) = do
-        expr <- evalExpr e
-        case expr of
-            SInt expr  -> do
-                        -- liftIO $ putStrLn "Print int"
-                        execStmt VRet --Iga: tymczasowo
-            SBool expr ->
-                        -- liftIO $ putStrLn "Print bool"
-                        execStmt VRet --Iga: tymczasowo
-            SStr expr  ->
-                        -- liftIO $ putStrLn "print string"
-                        execStmt VRet --Iga: tymczasowo
+    -- execStmt (Print e) = do
+    --     expr <- evalExpr e
+    --     case expr of
+    --         SInt expr  -> do
+    --                     -- liftIO $ putStrLn "Print int"
+    --                     execStmt VRet --Iga: tymczasowo
+    --         SBool expr ->
+    --                     -- liftIO $ putStrLn "Print bool"
+    --                     execStmt VRet --Iga: tymczasowo
+    --         SStr expr  ->
+    --                     -- liftIO $ putStrLn "print string"
+    --                     execStmt VRet --Iga: tymczasowo
     
-    execStmt (SExp e) = undefined
+    execStmt (SExp e) = do
+        (env, fenv) <- ask
+        val <- evalExpr e
+        return (env, fenv, Just val)
     
     execStmt (Break) = undefined
     execStmt (Cont) = undefined
@@ -192,22 +223,27 @@ module Interpreter where
 --------------------- RUN ------------------------
 --------------------------------------------------
 
-    interpretFun :: Program -> MM (Maybe StoredVal)
-    interpretFun (Program [FnDef Int f as (Block s)]) = interpret s
-    interpretFun (Program (d:ds)) = do 
-                    interpretFun (Program [d])
-                    interpretFun (Program ds)
-
-    interpret :: [Stmt] -> MM (Maybe StoredVal)
-    interpret [s] = execStmt s
-    interpret (s:xs) = do
-        execStmt s
-        interpret xs
+    runProgram :: Program -> MM (StoredVal)
+    runProgram (Program []) = do
+        env <- ask
+        local (\_ -> env) (evalExpr (EApp (Ident "main") []))
     
-    runProg prog = runState (runReaderT (interpretFun prog) Map.empty) (Map.empty) --Iga: skopiowane
+    runProgram (Program (f:fs)) = do 
+                    env <- runFunction f
+                    local (\_ -> env) (runProgram (Program fs))
 
-    -- evalExpr :: Expr -> Store -> StoredVal
-    -- evalExpr x s = runReader (evalExprHelper x) s
+
+    runFunction :: TopDef -> MM (VEnv, FEnv)
+    runFunction (FnDef typ ident args block) = do
+        (venv, fenv) <- ask
+        return $ (venv, insertFun ident (FnDef typ ident args block) fenv)     
+
+    -- interpret :: [Stmt] -> MM (Maybe StoredVal)
+    -- interpret [s] = execStmt s
+    -- interpret (s:s1:xs) = do
+    --     local id (execStmt s >> execStmt s1 >> interpret xs)
+    
+    runProg prog = runState (runReaderT (runProgram prog) (Map.empty, Map.empty)) (Map.empty, 0) --Iga: skopiowane
 
     --my monad
-    type MM = ReaderT Env (State Store)
+    type MM = ReaderT (VEnv, FEnv) (State Store)

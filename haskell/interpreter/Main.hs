@@ -10,11 +10,10 @@ import System.Environment (getArgs, getProgName)
 import System.Exit (exitFailure, exitSuccess)
 import Control.Exception (catch, IOException)
 
-printResult :: (Maybe StoredVal, Store) -> String
-printResult (Just (SInt res), store) = show res 
-printResult (Just (SBool res), store) = show res 
-printResult (Just (SStr res), store) = show res
-printResult (Nothing, store) = "Void prog"
+printResult :: (StoredVal, Store) -> String
+printResult ((SInt res), store) = show res 
+printResult ((SBool res), store) = show res 
+printResult ((SStr res), store) = show res
 
 main :: IO () --Iga: skopiowane
 main = do
