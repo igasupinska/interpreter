@@ -12,7 +12,7 @@ module Interpreter where
     type Loc = Integer
     type Store = (Map Loc StoredVal, Loc)
     type VEnv = Map Ident Loc
-    type FEnv = Map Ident TopDef
+    type FEnv = Map Ident (TopDef, VEnv)
 
     getNewLoc :: Store -> Store
     getNewLoc (store, lastLoc) = (store, lastLoc + 1)
@@ -25,10 +25,10 @@ module Interpreter where
 
 -- Iga: data TopDef = FnDef Type Ident [ArgOrRef] Block
 --Iga: tu zmienić
-    lookupFun :: Ident -> FEnv -> TopDef
-    lookupFun ident fenv = fromMaybe (FnDef Int (Ident "funkcja") [] (Block [])) (lookup ident fenv)
+    lookupFun :: Ident -> FEnv -> (TopDef, VEnv)
+    lookupFun ident fenv = fromMaybe ((FnDef Int (Ident "funkcja") [] (Block [])), Map.empty) (lookup ident fenv)
 
-    insertFun :: Ident -> TopDef -> FEnv -> FEnv
+    insertFun :: Ident -> (TopDef, VEnv) -> FEnv -> FEnv
     insertFun ident def fenv = insert ident def fenv
 
     lookupStore :: Loc -> Store -> StoredVal
@@ -122,17 +122,30 @@ module Interpreter where
 
     --Iga: data TopDef = FnDef Type Ident [ArgOrRef] Block
 
-    evalExpr (EApp fun []) = do
+    evalExpr (EApp fun rArgs) = do
         (venv, fenv) <- ask
-        let (FnDef typ ident args funBody) = lookupFun fun fenv
-        (venv2, fenv2, val) <- (execStmt $ BStmt funBody)
+        let ((FnDef typ ident fArgs funBody), venv2) = lookupFun fun fenv
+        venv3 <- mapArgs fArgs rArgs venv2
+        (venv3, fenv3, val) <- local (\_ -> (venv3, fenv)) (execStmt $ BStmt funBody)
         case val of
             Just i -> return i
             Nothing -> return $ SInt 0 --Iga: tu poprawić
 
-    evalExpr (EApp fun (ERefArg a:as)) = evalExpr (EApp fun as)
+    mapArgs :: [ArgOrRef] -> [ExprOrRef] -> VEnv -> MM (VEnv)
+    mapArgs [] [] venv = return venv
 
-    evalExpr (EApp fun (EExpArg a:as)) = undefined
+    mapArgs (RefArg typ a:fArgs) (ERefArg b:rArgs) venv2 = do
+        (venv, fenv) <- ask
+        let loc = lookupVar b venv
+        let newEnv = insertVar b loc venv2
+        mapArgs fArgs rArgs newEnv
+
+    mapArgs (Arg typ a:fArgs) (EExpArg b:rArgs) venv2 = do
+        (venv, fenv) <- ask
+        val <- evalExpr b
+        let loc = lookupVar a venv2
+        modify (insertStore loc val)
+        mapArgs fArgs rArgs venv2
 
     -- --array expr
     -- evalExprHelper (ArrAcc a e) = undefined
@@ -241,11 +254,23 @@ module Interpreter where
                     env <- runFunction f
                     local (\_ -> env) (runProgram (Program fs))
 
+    prepArgs :: [ArgOrRef] -> MM (VEnv)
+    prepArgs [] = do
+        (venv, fenv) <- ask
+        return venv
+    prepArgs (RefArg typ a:as) = do
+        (venv, fenv) <- ask
+        local (\_ -> (venv, fenv)) (prepArgs as)
+    prepArgs (Arg typ a:as) = do
+        (venv, fenv) <- ask
+        (venv2, fenv2, _) <- execStmt $ (Decl typ (NoInit a))
+        local (\_ -> (venv2, fenv)) (prepArgs as)
 
     runFunction :: TopDef -> MM (VEnv, FEnv)
     runFunction (FnDef typ ident args block) = do
         (venv, fenv) <- ask
-        return $ (venv, insertFun ident (FnDef typ ident args block) fenv)     
+        venv2 <- prepArgs args
+        return $ (venv, insertFun ident ((FnDef typ ident args block), venv2) fenv)     
 
     
     runProg prog = runStateT (runReaderT (runProgram prog) (Map.empty, Map.empty)) (Map.empty, 0) --Iga: skopiowane
