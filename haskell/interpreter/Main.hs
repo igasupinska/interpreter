@@ -9,6 +9,7 @@ import System.IO (stdin, hGetContents, hPutStrLn, stderr, getContents, hPutStr)
 import System.Environment (getArgs, getProgName)
 import System.Exit (exitFailure, exitSuccess)
 import Control.Exception (catch, IOException)
+import Control.Monad.IO.Class
 
 printResult :: (StoredVal, Store) -> String
 printResult ((SInt res), store) = show res 
@@ -32,8 +33,8 @@ parse input = let src = myLexer input in
                         putStrLn "Parse Failed...\n"
                         exitFailure
             Ok c  ->  do
-                        putStrLn "Parse Successful!\n"
-                        putStrLn $ printResult $ runProg c
+                        (val, store) <- runProg c
+                        putStrLn $ printResult (val, store)
                         exitSuccess
 
 

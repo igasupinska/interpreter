@@ -18,7 +18,7 @@ module Interpreter where
     getNewLoc (store, lastLoc) = (store, lastLoc + 1)
 
     lookupVar :: Ident -> VEnv -> Loc
-    lookupVar name env = maybe 0 id (lookup name env)
+    lookupVar name env = fromMaybe 99 (lookup name env)
 
     insertVar :: Ident -> Loc -> VEnv -> VEnv
     insertVar name loc env = insert name loc env
@@ -125,7 +125,7 @@ module Interpreter where
     evalExpr (EApp fun []) = do
         (venv, fenv) <- ask
         let (FnDef typ ident args funBody) = lookupFun fun fenv
-        (venv2, fenv2, val) <- execStmt $ BStmt funBody
+        (venv2, fenv2, val) <- (execStmt $ BStmt funBody)
         case val of
             Just i -> return i
             Nothing -> return $ SInt 0 --Iga: tu poprawić
@@ -141,11 +141,20 @@ module Interpreter where
 --------------------------------------------------
 ------------------ STATEMENTS --------------------
 --------------------------------------------------
+    execStmtHelper (BStmt (Block [s])) = do
+        (venv, fenv) <- ask
+        local (\_ ->(venv, fenv)) (execStmt s)
+
+    execStmtHelper (BStmt (Block (s:ss))) = do
+        (venv, fenv, val) <- execStmt s
+        local (\_ -> (venv, fenv)) (execStmtHelper (BStmt (Block ss)))
 
     execStmt :: Stmt -> MM (VEnv, FEnv, Maybe StoredVal)    
-    execStmt (BStmt (Block [s])) = execStmt s
-    execStmt (BStmt (Block (s:ss))) =
-        (execStmt s) >> execStmt (BStmt (Block ss))
+
+    execStmt (BStmt (Block b)) = do
+        (venv, fenv) <- ask
+        (_, _, val) <- local (\_ -> (venv, fenv)) (execStmtHelper (BStmt (Block b)))
+        return (venv, fenv, val)
     
     execStmt (Decl t (NoInit ident)) = do
         -- loc <- 1 --Iga: powinna być jakaś funkcja newloc
@@ -155,8 +164,8 @@ module Interpreter where
         return (insertVar ident loc venv, fenv, Nothing)
    
     execStmt (Decl t (Init ident expr)) = do
-        execStmt (Decl t (NoInit ident))
-        execStmt (Ass ident expr)
+        (venv, fenv, val) <- execStmt (Decl t (NoInit ident))
+        local (\_ -> (venv, fenv)) (execStmt (Ass ident expr))
 
     execStmt (Ass ident e) = do
         val <- evalExpr e
@@ -166,7 +175,7 @@ module Interpreter where
     
     execStmt (Ret e) = do
         (venv, fenv) <- ask
-        expr <- evalExpr e
+        expr <- local(\_ -> (venv, fenv)) (evalExpr e)
         return (venv, fenv, Just expr)
 
     execStmt (VRet) = do
@@ -192,23 +201,23 @@ module Interpreter where
             SBool False -> execStmt VRet
 
     execStmt (For v start end (Block b)) = do
-        execStmt $ Decl Int (Init v start)
+        (venv, fenv, _) <- execStmt (Ass  v start)
         let incr = Ass v (EAdd (EVar v) Plus (ELitInt 1)) in
-            execStmt $ While (ERel (EVar v) LTH end) (Block (incr:b))
+            local(\_ -> (venv, fenv)) (execStmt $ While (ERel (EVar v) LTH end) (Block (incr:b)))
 
     
-    -- execStmt (Print e) = do
-    --     expr <- evalExpr e
-    --     case expr of
-    --         SInt expr  -> do
-    --                     -- liftIO $ putStrLn "Print int"
-    --                     execStmt VRet --Iga: tymczasowo
-    --         SBool expr ->
-    --                     -- liftIO $ putStrLn "Print bool"
-    --                     execStmt VRet --Iga: tymczasowo
-    --         SStr expr  ->
-    --                     -- liftIO $ putStrLn "print string"
-    --                     execStmt VRet --Iga: tymczasowo
+    execStmt (Print e) = do
+        expr <- evalExpr e
+        case expr of
+            SInt expr  -> do
+                        liftIO $ putStrLn $ show expr
+                        execStmt VRet --Iga: tymczasowo
+            SBool expr -> do
+                        liftIO $ putStrLn $ show expr
+                        execStmt VRet --Iga: tymczasowo
+            SStr expr  -> do
+                        liftIO $ putStrLn $ show expr
+                        execStmt VRet --Iga: tymczasowo
     
     execStmt (SExp e) = do
         (env, fenv) <- ask
@@ -238,12 +247,8 @@ module Interpreter where
         (venv, fenv) <- ask
         return $ (venv, insertFun ident (FnDef typ ident args block) fenv)     
 
-    -- interpret :: [Stmt] -> MM (Maybe StoredVal)
-    -- interpret [s] = execStmt s
-    -- interpret (s:s1:xs) = do
-    --     local id (execStmt s >> execStmt s1 >> interpret xs)
     
-    runProg prog = runState (runReaderT (runProgram prog) (Map.empty, Map.empty)) (Map.empty, 0) --Iga: skopiowane
+    runProg prog = runStateT (runReaderT (runProgram prog) (Map.empty, Map.empty)) (Map.empty, 0) --Iga: skopiowane
 
     --my monad
-    type MM = ReaderT (VEnv, FEnv) (State Store)
+    type MM = ReaderT (VEnv, FEnv) (StateT Store IO)
