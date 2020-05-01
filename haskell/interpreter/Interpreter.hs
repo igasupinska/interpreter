@@ -36,6 +36,13 @@ module Interpreter where
     insertStore :: Loc -> StoredVal -> Store -> Store
     insertStore loc val (store, lastLoc) = (insert loc val store, lastLoc)
 
+    --Iga: data Type = Int | Str | Bool | Void | Arr Type
+    --Iga: co z arr i void?
+    getDefaultExpr :: Type -> Expr
+    getDefaultExpr Int = ELitInt 0
+    getDefaultExpr Str = EString []
+    getDefaultExpr Bool = ELitFalse
+
 --------------------------------------------------
 ----------------- EXPRESSIONS --------------------
 --------------------------------------------------
@@ -151,12 +158,40 @@ module Interpreter where
         let newEnv = insertVar b loc venv2
         mapArgs fArgs rArgs newEnv
 
+    mapArgs (Arg (Arr typ) a:fArgs) (EExpArg b:rArgs) venv = do
+        initList <- listFromArr b typ
+        (s, loc) <- get 
+        (venv2, fenv, _) <- execStmt (Decl typ (ArrInit a (ELitInt $ toInteger (length initList)) initList))
+        let venv3 = insertVar a loc venv2
+        mapArgs fArgs rArgs venv3
+
     mapArgs (Arg typ a:fArgs) (EExpArg b:rArgs) venv2 = do
         (venv, fenv) <- ask
         val <- evalExpr b
         let loc = lookupVar a venv2
         modify (insertStore loc val)
         mapArgs fArgs rArgs venv2
+
+
+    listFromArr :: Expr -> Type -> MM([Expr])
+    listFromArr (EVar ident) t = do
+        (venv, fenv) <- ask
+        let loc = lookupVar ident venv
+        SInt size <- gets (lookupStore loc)
+        newArr <- getArr t (loc + 1) size
+        return newArr
+
+    getArr :: Type -> Loc -> Integer -> MM([Expr])
+    getArr t l 0 = return []
+
+    getArr t l s = do
+        el <- gets (lookupStore l)
+        rest <- getArr t (l+1) (s-1)
+        case el of
+            SInt x -> return $ (ELitInt x):rest
+            SBool False -> return $ (ELitFalse):rest
+            SBool True -> return $ (ELitTrue):rest
+            SStr x -> return $ (EString x):rest
 
 
     storeArray :: Integer -> [Expr] -> MM()
@@ -172,6 +207,11 @@ module Interpreter where
 --------------------------------------------------
 ------------------ STATEMENTS --------------------
 --------------------------------------------------
+   --Iga: tu się będzie powtarzać
+    execStmtHelper (BStmt (Block [])) = do
+        (venv, fenv) <- ask
+        return (venv, fenv, Nothing)
+
     execStmtHelper (BStmt (Block [s])) = do
         (venv, fenv) <- ask
         local (\_ ->(venv, fenv)) (execStmt s)
@@ -186,17 +226,18 @@ module Interpreter where
         (venv, fenv) <- ask
         (_, _, val) <- local (\_ -> (venv, fenv)) (execStmtHelper (BStmt (Block b)))
         return (venv, fenv, val)
-    
+
     execStmt (Decl t (NoInit ident)) = do
-        -- loc <- 1 --Iga: powinna być jakaś funkcja newloc
+        let e = getDefaultExpr t
+        execStmt (Decl t (Init ident e))
+
+    execStmt (Decl t (Init ident expr)) = do
         (s, loc) <- get
         modify (getNewLoc)
         (venv, fenv) <- ask
-        return (insertVar ident loc venv, fenv, Nothing)
-   
-    execStmt (Decl t (Init ident expr)) = do
-        (venv, fenv, val) <- execStmt (Decl t (NoInit ident))
-        local (\_ -> (venv, fenv)) (execStmt (Ass ident expr))
+        let newVenv = insertVar ident loc venv
+        local (\_ -> (newVenv, fenv)) (execStmt (Ass ident expr))
+        return (newVenv, fenv, Nothing)
 
     execStmt (Decl t (ArrNoInit ident expr)) = do
         (s, loc) <- get
@@ -204,6 +245,7 @@ module Interpreter where
         (venv, fenv) <- ask
         SInt size <- evalExpr expr
         modify (insertStore loc (SInt size))
+        val <- evalExpr $ getDefaultExpr t
         () <- storeArray size (replicate (fromInteger size) (ELitInt 0)) --Iga: tu poprawić
         return (insertVar ident loc venv, fenv, Nothing)
 
@@ -222,6 +264,15 @@ module Interpreter where
         modify (insertStore (lookupVar ident venv) val)
         execStmt VRet --Iga:tymczasowo
     
+    execStmt (ArrAss ident idx_e e) = do
+        SInt idx <- evalExpr idx_e
+        val <- evalExpr e
+        (venv, fenv) <- ask
+        let loc = lookupVar ident venv
+        modify (insertStore (loc + 1 + idx) val)
+        execStmt VRet --Iga:tymczasowo
+
+
     execStmt (Ret e) = do
         (venv, fenv) <- ask
         expr <- local(\_ -> (venv, fenv)) (evalExpr e)
@@ -297,6 +348,10 @@ module Interpreter where
     prepArgs (RefArg typ a:as) = do
         (venv, fenv) <- ask
         local (\_ -> (venv, fenv)) (prepArgs as)
+    prepArgs (Arg (Arr t) a:as) = do
+        (venv, fenv) <- ask
+        (venv2, fenv2, _) <- execStmt $ Decl t (ArrNoInit a (ELitInt 0)) --Iga: tu źle na maksa! jaki rozmiar tablicy?
+        local (\_ -> (venv2, fenv)) (prepArgs as)
     prepArgs (Arg typ a:as) = do
         (venv, fenv) <- ask
         (venv2, fenv2, _) <- execStmt $ (Decl typ (NoInit a))
