@@ -12,6 +12,7 @@ module Interpreter where
     type Store = (Map Loc StoredVal, Loc)
     type VEnv = Map Ident Loc
     type FEnv = Map Ident (TopDef, VEnv)
+    data Flag = FReturn | FBreak | FContinue | FNothing
 
     getNewLoc :: Store -> Store
     getNewLoc (store, lastLoc) = (store, lastLoc + 1)
@@ -42,6 +43,7 @@ module Interpreter where
     getDefaultExpr Int = ELitInt 0
     getDefaultExpr Str = EString []
     getDefaultExpr Bool = ELitFalse
+    getDefaultExpr (Arr t) = getDefaultExpr t
 
 --------------------------------------------------
 ----------------- EXPRESSIONS --------------------
@@ -132,7 +134,7 @@ module Interpreter where
         (venv, fenv) <- ask
         let ((FnDef typ ident fArgs funBody), venv2) = lookupFun fun fenv
         venv3 <- mapArgs fArgs rArgs venv2
-        (venv3, fenv3, val) <- local (\_ -> (venv3, fenv)) (execStmt $ BStmt funBody)
+        (venv3, fenv3, val, flag) <- local (\_ -> (venv3, fenv)) (execStmt $ BStmt funBody)
         case val of
             Just i -> return i
             Nothing -> return $ SInt 0 --Iga: tu poprawić
@@ -161,7 +163,7 @@ module Interpreter where
     mapArgs (Arg (Arr typ) a:fArgs) (EExpArg b:rArgs) venv = do
         initList <- listFromArr b typ
         (s, loc) <- get 
-        (venv2, fenv, _) <- execStmt (Decl typ (ArrInit a (ELitInt $ toInteger (length initList)) initList))
+        (venv2, fenv, _, _) <- execStmt (Decl typ (ArrInit a (ELitInt $ toInteger (length initList)) initList))
         let venv3 = insertVar a loc venv2
         mapArgs fArgs rArgs venv3
 
@@ -210,22 +212,26 @@ module Interpreter where
    --Iga: tu się będzie powtarzać
     execStmtHelper (BStmt (Block [])) = do
         (venv, fenv) <- ask
-        return (venv, fenv, Nothing)
+        return (venv, fenv, Nothing, FReturn)
 
     execStmtHelper (BStmt (Block [s])) = do
         (venv, fenv) <- ask
         local (\_ ->(venv, fenv)) (execStmt s)
 
     execStmtHelper (BStmt (Block (s:ss))) = do
-        (venv, fenv, val) <- execStmt s
-        local (\_ -> (venv, fenv)) (execStmtHelper (BStmt (Block ss)))
+        (venv, fenv, val, flag) <- execStmt s
+        case flag of
+            FNothing -> local (\_ -> (venv, fenv)) (execStmtHelper (BStmt (Block ss)))
+            FReturn -> return (venv, fenv, val, flag)
+            FBreak -> return (venv, fenv, val, flag)
+            FContinue -> return (venv, fenv, val, flag)
 
-    execStmt :: Stmt -> MM (VEnv, FEnv, Maybe StoredVal)    
+    execStmt :: Stmt -> MM (VEnv, FEnv, Maybe StoredVal, Flag)    
 
     execStmt (BStmt (Block b)) = do
         (venv, fenv) <- ask
-        (_, _, val) <- local (\_ -> (venv, fenv)) (execStmtHelper (BStmt (Block b)))
-        return (venv, fenv, val)
+        (_, _, val, flag) <- local (\_ -> (venv, fenv)) (execStmtHelper (BStmt (Block b)))
+        return (venv, fenv, val, flag)
 
     execStmt (Decl t (NoInit ident)) = do
         let e = getDefaultExpr t
@@ -237,7 +243,7 @@ module Interpreter where
         (venv, fenv) <- ask
         let newVenv = insertVar ident loc venv
         local (\_ -> (newVenv, fenv)) (execStmt (Ass ident expr))
-        return (newVenv, fenv, Nothing)
+        return (newVenv, fenv, Nothing, FNothing)
 
     execStmt (Decl t (ArrNoInit ident expr)) = do
         (s, loc) <- get
@@ -247,7 +253,7 @@ module Interpreter where
         modify (insertStore loc (SInt size))
         val <- evalExpr $ getDefaultExpr t
         () <- storeArray size (replicate (fromInteger size) (ELitInt 0)) --Iga: tu poprawić
-        return (insertVar ident loc venv, fenv, Nothing)
+        return (insertVar ident loc venv, fenv, Nothing, FNothing)
 
     execStmt (Decl t (ArrInit ident expr initList)) = do
         (s, loc) <- get
@@ -256,13 +262,13 @@ module Interpreter where
         SInt size <- evalExpr expr
         modify (insertStore loc (SInt size))
         storeArray size initList
-        return (insertVar ident loc venv, fenv, Nothing)
+        return (insertVar ident loc venv, fenv, Nothing, FNothing)
 
     execStmt (Ass ident e) = do
         val <- evalExpr e
         (venv, fenv) <- ask
         modify (insertStore (lookupVar ident venv) val)
-        execStmt VRet --Iga:tymczasowo
+        return (venv, fenv, Nothing, FNothing)
     
     execStmt (ArrAss ident idx_e e) = do
         SInt idx <- evalExpr idx_e
@@ -270,23 +276,24 @@ module Interpreter where
         (venv, fenv) <- ask
         let loc = lookupVar ident venv
         modify (insertStore (loc + 1 + idx) val)
-        execStmt VRet --Iga:tymczasowo
-
+        return (venv, fenv, Nothing, FNothing)
 
     execStmt (Ret e) = do
         (venv, fenv) <- ask
         expr <- local(\_ -> (venv, fenv)) (evalExpr e)
-        return (venv, fenv, Just expr)
+        return (venv, fenv, Just expr, FReturn)
 
     execStmt (VRet) = do
         (venv, fenv) <- ask
-        return (venv, fenv, Nothing)
+        return (venv, fenv, Nothing, FReturn)
     
     execStmt (Cond e b) = do
+        (venv, fenv) <- ask
         expr <- evalExpr e
         case expr of
             SBool True -> execStmt (BStmt b)
-            SBool False -> execStmt VRet --tymczasowo
+            SBool False -> return (venv, fenv, Nothing, FNothing)
+
     
     execStmt (CondElse e if_b else_b) = do
         expr <- evalExpr e
@@ -295,38 +302,52 @@ module Interpreter where
             SBool False -> execStmt $ BStmt else_b
 
     execStmt (While e b) = do
+        (venv, fenv) <- ask
         expr <- evalExpr e
         case expr of
-            SBool True -> execStmt (Cond e b) >> execStmt (While e b)
-            SBool False -> execStmt VRet
+            SBool True -> do
+                (venv2, fenv2, val, flag) <- execStmt (Cond e b)
+                case flag of
+                    FNothing -> local(\_ -> (venv2, fenv2)) (execStmt (While e b))
+                    FReturn -> return (venv2, fenv2, val, flag)
+                    FBreak ->  return (venv2, fenv2, val, flag)
+                    FContinue -> local(\_ -> (venv2, fenv2)) (execStmt (While e b))
+            SBool False -> return (venv, fenv, Nothing, FNothing)
 
+
+    --Iga: tu dodać przerwanie returnem
     execStmt (For v start end (Block b)) = do
-        (venv, fenv, _) <- execStmt (Ass  v start)
+        (venv, fenv, _, _) <- execStmt (Ass v start)
         let incr = Ass v (EAdd (EVar v) Plus (ELitInt 1)) in
             local(\_ -> (venv, fenv)) (execStmt $ While (ERel (EVar v) LTH end) (Block (incr:b)))
 
     
     execStmt (Print e) = do
         expr <- evalExpr e
+        (venv, fenv) <- ask
         case expr of
             SInt expr  -> do
                         liftIO $ putStrLn $ show expr
-                        execStmt VRet --Iga: tymczasowo
+                        return (venv, fenv, Nothing, FNothing)
             SBool expr -> do
                         liftIO $ putStrLn $ show expr
-                        execStmt VRet --Iga: tymczasowo
+                        return (venv, fenv, Nothing, FNothing)
             SStr expr  -> do
                         liftIO $ putStrLn $ show expr
-                        execStmt VRet --Iga: tymczasowo
+                        return (venv, fenv, Nothing, FNothing)
     
     execStmt (SExp e) = do
         (env, fenv) <- ask
         val <- evalExpr e
-        return (env, fenv, Just val)
+        return (env, fenv, Just val, FNothing)
     
-    execStmt (Break) = undefined
-    execStmt (Cont) = undefined
-
+    execStmt (Break) = do
+        (venv, fenv) <- ask
+        return (venv, fenv, Nothing, FBreak)
+    
+    execStmt (Cont) = do
+        (venv, fenv) <- ask
+        return (venv, fenv, Nothing, FContinue)
 
 --------------------------------------------------
 --------------------- RUN ------------------------
@@ -350,11 +371,11 @@ module Interpreter where
         local (\_ -> (venv, fenv)) (prepArgs as)
     prepArgs (Arg (Arr t) a:as) = do
         (venv, fenv) <- ask
-        (venv2, fenv2, _) <- execStmt $ Decl t (ArrNoInit a (ELitInt 0)) --Iga: tu źle na maksa! jaki rozmiar tablicy?
+        (venv2, fenv2, _, _) <- execStmt $ Decl t (ArrNoInit a (ELitInt 0)) --Iga: tu źle na maksa! jaki rozmiar tablicy?
         local (\_ -> (venv2, fenv)) (prepArgs as)
     prepArgs (Arg typ a:as) = do
         (venv, fenv) <- ask
-        (venv2, fenv2, _) <- execStmt $ (Decl typ (NoInit a))
+        (venv2, fenv2, _, _) <- execStmt $ (Decl typ (NoInit a))
         local (\_ -> (venv2, fenv)) (prepArgs as)
 
     runFunction :: TopDef -> MM (VEnv, FEnv)

@@ -1,0 +1,18 @@
+void change(ref array<string> napis) {
+    print(napis[0]);
+    print(napis[1]);
+    print(napis[2]);
+    print("--");
+
+    napis{1} = "nie ma";
+}
+
+int main() {
+	array<string> napis(3) {"ala", "ma", "kota"};
+    change(ref napis);
+    print(napis[0]);
+    print(napis[1]);
+    print(napis[2]);
+
+    return 0;
+}
