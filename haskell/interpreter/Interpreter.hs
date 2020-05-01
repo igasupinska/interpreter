@@ -319,7 +319,7 @@ module Interpreter where
     execStmt (For v start end (Block b)) = do
         (venv, fenv, _, _) <- execStmt (Ass v start)
         let incr = Ass v (EAdd (EVar v) Plus (ELitInt 1)) in
-            local(\_ -> (venv, fenv)) (execStmt $ While (ERel (EVar v) LTH end) (Block (incr:b)))
+            local(\_ -> (venv, fenv)) (execStmt $ While (ERel (EVar v) LTH end) (Block (b ++ [incr])))
 
     
     execStmt (Print e) = do
