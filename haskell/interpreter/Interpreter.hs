@@ -7,8 +7,7 @@ module Interpreter where
     import Data.Maybe
     import Prelude hiding (lookup)
     
-    data StoredVal = SInt Integer | SStr String | SBool Bool -- Iga: co z tablicami?
-
+    data StoredVal = SInt Integer | SStr String | SBool Bool
     type Loc = Integer
     type Store = (Map Loc StoredVal, Loc)
     type VEnv = Map Ident Loc
@@ -32,10 +31,10 @@ module Interpreter where
     insertFun ident def fenv = insert ident def fenv
 
     lookupStore :: Loc -> Store -> StoredVal
-    lookupStore loc (store, _) = fromMaybe (SInt 0) (lookup loc store)
+    lookupStore loc (store, _) = fromMaybe (SStr $ "Not found") (lookup loc store)
 
     insertStore :: Loc -> StoredVal -> Store -> Store
-    insertStore loc val (store, lastLoc) = (insert loc val store, lastLoc + 1)
+    insertStore loc val (store, lastLoc) = (insert loc val store, lastLoc)
 
 --------------------------------------------------
 ----------------- EXPRESSIONS --------------------
@@ -131,6 +130,18 @@ module Interpreter where
             Just i -> return i
             Nothing -> return $ SInt 0 --Iga: tu poprawić
 
+    --array expr
+    evalExpr (ArrAcc a e) = do
+        (venv, fenv) <- ask
+        let loc = lookupVar a venv
+        SInt size <- gets (lookupStore loc)
+        SInt idx <- evalExpr e
+        if idx < size
+            then do
+                val <- gets(lookupStore (loc + 1 + idx)) -- Iga: ok
+                return val
+            else return $ SInt (-1) -- Iga: out of bound exception
+
     mapArgs :: [ArgOrRef] -> [ExprOrRef] -> VEnv -> MM (VEnv)
     mapArgs [] [] venv = return venv
 
@@ -147,9 +158,16 @@ module Interpreter where
         modify (insertStore loc val)
         mapArgs fArgs rArgs venv2
 
-    -- --array expr
-    -- evalExprHelper (ArrAcc a e) = undefined
 
+    storeArray :: Integer -> [Expr] -> MM()
+    storeArray 0 val = return ()
+
+    storeArray size (v:vs) = do
+        (s, loc) <- get
+        modify (getNewLoc)
+        val <- evalExpr v
+        modify (insertStore loc val)
+        storeArray (size-1) vs
 
 --------------------------------------------------
 ------------------ STATEMENTS --------------------
@@ -179,6 +197,24 @@ module Interpreter where
     execStmt (Decl t (Init ident expr)) = do
         (venv, fenv, val) <- execStmt (Decl t (NoInit ident))
         local (\_ -> (venv, fenv)) (execStmt (Ass ident expr))
+
+    execStmt (Decl t (ArrNoInit ident expr)) = do
+        (s, loc) <- get
+        modify (getNewLoc)
+        (venv, fenv) <- ask
+        SInt size <- evalExpr expr
+        modify (insertStore loc (SInt size))
+        () <- storeArray size (replicate (fromInteger size) (ELitInt 0)) --Iga: tu poprawić
+        return (insertVar ident loc venv, fenv, Nothing)
+
+    execStmt (Decl t (ArrInit ident expr initList)) = do
+        (s, loc) <- get
+        modify (getNewLoc)
+        (venv, fenv) <- ask
+        SInt size <- evalExpr expr
+        modify (insertStore loc (SInt size))
+        storeArray size initList
+        return (insertVar ident loc venv, fenv, Nothing)
 
     execStmt (Ass ident e) = do
         val <- evalExpr e
