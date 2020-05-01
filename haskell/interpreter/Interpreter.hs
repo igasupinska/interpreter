@@ -310,7 +310,7 @@ module Interpreter where
                 case flag of
                     FNothing -> local(\_ -> (venv2, fenv2)) (execStmt (While e b))
                     FReturn -> return (venv2, fenv2, val, flag)
-                    FBreak ->  return (venv2, fenv2, val, flag)
+                    FBreak ->  return (venv2, fenv2, val, FNothing)
                     FContinue -> local(\_ -> (venv2, fenv2)) (execStmt (While e b))
             SBool False -> return (venv, fenv, Nothing, FNothing)
 
