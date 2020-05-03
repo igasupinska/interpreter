@@ -9,12 +9,7 @@ module Interpreter where
     import Data.Maybe
     import Prelude hiding (lookup)
     
-    data StoredVal = SInt Integer | SStr String | SBool Bool
-    type Loc = Integer
-    type Store = (Map Loc StoredVal, Loc)
-    type VEnv = Map Ident Loc
-    type FEnv = Map Ident (TopDef, VEnv)
-    data Flag = FReturn | FBreak | FContinue | FNothing
+    import Types
 
     getNewLoc :: Store -> Store
     getNewLoc (store, lastLoc) = (store, lastLoc + 1)
@@ -38,14 +33,6 @@ module Interpreter where
 
     insertStore :: Loc -> StoredVal -> Store -> Store
     insertStore loc val (store, lastLoc) = (insert loc val store, lastLoc)
-
-    --Iga: data Type = Int | Str | Bool | Void | Arr Type
-    --Iga: co z arr i void?
-    getDefaultExpr :: Type -> Expr
-    getDefaultExpr Int = ELitInt 0
-    getDefaultExpr Str = EString []
-    getDefaultExpr Bool = ELitFalse
-    getDefaultExpr (Arr t) = getDefaultExpr t
 
 --------------------------------------------------
 ----------------- EXPRESSIONS --------------------
@@ -97,7 +84,7 @@ module Interpreter where
     --string expr
     evalExpr (EString s) = return $ SStr s
     
-    -- --bool expr
+    --bool expr
     evalExpr (ELitTrue) = return $ SBool True
     
     evalExpr (ELitFalse) = return $ SBool False
@@ -128,10 +115,9 @@ module Interpreter where
             True -> return $ SBool True
             False -> evalExpr e2
 
-    -- --function expr
+    --function expr
 
     --Iga: data TopDef = FnDef Type Ident [ArgOrRef] Block
-
     evalExpr (EApp fun rArgs) = do
         (venv, fenv) <- ask
         let ((FnDef typ ident fArgs funBody), venv2) = lookupFun fun fenv
@@ -300,7 +286,6 @@ module Interpreter where
             SBool True -> execStmt (BStmt b)
             SBool False -> return (venv, fenv, Nothing, FNothing)
 
-    
     execStmt (CondElse e if_b else_b) = do
         expr <- evalExpr e
         case expr of
@@ -392,13 +377,3 @@ module Interpreter where
 
     
     runProg prog = runExceptT $ runStateT (runReaderT (runProgram prog) (Map.empty, Map.empty)) (Map.empty, 0) --Iga: skopiowane
-
-    --my monad
-    type MM = ReaderT (VEnv, FEnv) (StateT Store (ExceptT MyException IO))
-
-    data MyException = DivZero | OutOfBound
-
-    -- Converts MyException to a readable message.
-    instance Show MyException where
-      show DivZero = "Trying to divide by 0"
-      show OutOfBound = "Index out of bound"

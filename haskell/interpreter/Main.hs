@@ -4,6 +4,7 @@ import ParGramm
 import ErrM
 
 import Interpreter
+import Types
 
 import System.IO (stdin, hGetContents, hPutStrLn, stderr, getContents, hPutStr)
 import System.Environment (getArgs, getProgName)
