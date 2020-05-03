@@ -1,0 +1,13 @@
+- dodać przypisanie na element tablicy w gramatyce
+ 	--> poprawić shift/reduce conflict
+ 	ArrAss.    Stmt ::= Ident "{" Expr "}" "=" Expr ;
+- dostęp do elementu tablicy w różnych środowiskach (?)
+- return musi wychodzić z funkcji
+- return w pętli for
+- podawanie wyrażeń w indeksie tablicy w nawiasie
+- rekurencja
+- usunąć średniki za blokiem
+
+kompilacja:
+bnfc -m gramm.cf
+make
