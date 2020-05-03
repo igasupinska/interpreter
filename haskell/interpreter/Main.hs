@@ -33,7 +33,12 @@ parse input = let src = myLexer input in
                         putStrLn "Parse Failed...\n"
                         exitFailure
             Ok c  ->  do
-                        (val, store) <- runProg c
+                res <- runProg c
+                case res of
+                    Left err -> do
+                        putStrLn $ show err
+                        exitFailure
+                    Right (val, store) -> do
                         putStrLn $ printResult (val, store)
                         exitSuccess
 

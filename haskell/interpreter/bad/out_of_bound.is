@@ -1,0 +1,8 @@
+int main() {
+
+	array<int> tab(5) {0,1,2,3,4};
+
+	int x = tab[10];
+
+	return 0;
+}

@@ -3,6 +3,8 @@ module Interpreter where
 
     import Control.Monad.Reader
     import Control.Monad.State.Lazy
+    import Control.Monad.Except
+    import Control.Exception
     import Data.Map as Map
     import Data.Maybe
     import Prelude hiding (lookup)
@@ -72,14 +74,14 @@ module Interpreter where
         SInt i1 <- evalExpr e1
         SInt i2 <- evalExpr e2
         if i2 == 0
-            then return $ SStr "Division by zero!" --Iga: tu poprawić
+            then throwError DivZero
             else return $ SInt $ i1 `div` i2 
 
     evalExpr (EMul e1 Mod e2) = do
         SInt i1 <- evalExpr e1
         SInt i2 <- evalExpr e2
         if i2 == 0
-            then return $ SStr "Division by zero!" --Iga: tu poprawić
+            then throwError DivZero
             else return $ SInt $ i1 `mod` i2 
     
     evalExpr (EAdd e1 Plus e2) = do
@@ -149,7 +151,7 @@ module Interpreter where
             then do
                 val <- gets(lookupStore (loc + 1 + idx)) -- Iga: ok
                 return val
-            else return $ SInt (-1) -- Iga: out of bound exception
+            else throwError OutOfBound
 
     mapArgs :: [ArgOrRef] -> [ExprOrRef] -> VEnv -> MM (VEnv)
     mapArgs [] [] venv = return venv
@@ -275,8 +277,12 @@ module Interpreter where
         val <- evalExpr e
         (venv, fenv) <- ask
         let loc = lookupVar ident venv
-        modify (insertStore (loc + 1 + idx) val)
-        return (venv, fenv, Nothing, FNothing)
+        SInt size <- gets (lookupStore loc)
+        if idx < size
+        then do
+            modify (insertStore (loc + 1 + idx) val)
+            return (venv, fenv, Nothing, FNothing)
+        else throwError OutOfBound
 
     execStmt (Ret e) = do
         (venv, fenv) <- ask
@@ -385,7 +391,14 @@ module Interpreter where
         return $ (venv, insertFun ident ((FnDef typ ident args block), venv2) fenv)     
 
     
-    runProg prog = runStateT (runReaderT (runProgram prog) (Map.empty, Map.empty)) (Map.empty, 0) --Iga: skopiowane
+    runProg prog = runExceptT $ runStateT (runReaderT (runProgram prog) (Map.empty, Map.empty)) (Map.empty, 0) --Iga: skopiowane
 
     --my monad
-    type MM = ReaderT (VEnv, FEnv) (StateT Store IO)
+    type MM = ReaderT (VEnv, FEnv) (StateT Store (ExceptT MyException IO))
+
+    data MyException = DivZero | OutOfBound
+
+    -- Converts MyException to a readable message.
+    instance Show MyException where
+      show DivZero = "Trying to divide by 0"
+      show OutOfBound = "Index out of bound"
