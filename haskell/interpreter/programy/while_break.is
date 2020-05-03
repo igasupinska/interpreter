@@ -5,8 +5,8 @@ int main() {
 		k = k + 1;
 		if (k == 6) {
 			break;
-		};
-	};
+		}
+	}
 
 	print(k); //outputs 6
 
@@ -18,11 +18,11 @@ int main() {
 		k = k + 1;
 		if ((k % 2) == 0) {
 			continue;
-		};
+		}
 
 		count = count + 1;
 
-	};
+	}
 
 	print(count); //outputs 5
 

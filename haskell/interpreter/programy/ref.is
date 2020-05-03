@@ -4,7 +4,7 @@ void increment(ref int num) {
 
 int main() {
     int num;
-    increment(ref num);
+   	increment(ref num);
     print(num); //outputs 1
     return 0;
 }

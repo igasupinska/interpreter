@@ -16,13 +16,13 @@ separator  ArgOrRef "," ;
 
 -- statements ----------------------------------------------
 
-separator  Stmt ";" ;
+separator  Stmt "" ;
 
 Block.     Block ::= "{" [Stmt] "}" ;
 
 BStmt.     Stmt ::= Block ;
 
-Decl.      Stmt ::= Type Item ;
+Decl.      Stmt ::= Type Item ";" ;
 
 NoInit.    Item ::= Ident ; 
 
@@ -34,27 +34,29 @@ ArrInit.   Item ::= Ident "(" Expr ")" "{" [Expr] "}" ;
 
 separator nonempty Item "," ;
 
-Ass.       Stmt ::= Ident "=" Expr ;
+Ass.       Stmt ::= Ident "=" Expr ";" ;
 
-Ret.       Stmt ::= "return" Expr ;
+ArrAss.    Stmt ::= Ident "{" Expr "}" "=" Expr ";" ;
 
-VRet.      Stmt ::= "return" ;
+Ret.       Stmt ::= "return" Expr ";" ;
 
-Cond.      Stmt ::= "if" "(" Expr ")" Block;
+VRet.      Stmt ::= "return" ";" ;
 
-CondElse.  Stmt ::= "if" "(" Expr ")" Block "else" Block  ;
+Cond.      Stmt ::= "if" "(" Expr ")" Block ;
+
+CondElse.  Stmt ::= "if" "(" Expr ")" Block "else" Block ;
 
 While.     Stmt ::= "while" "(" Expr ")" Block ;
 
 For.       Stmt ::= "for" "(" Ident "from" Expr "to" Expr ")" Block ;
 
-Print.     Stmt ::= "print" Expr ;
+Print.     Stmt ::= "print" Expr ";" ;
 
-SExp.      Stmt ::= Expr ;
+SExp.      Stmt ::= Expr ";" ;
 
-Break.     Stmt ::= "break" ;
+Break.     Stmt ::= "break" ";" ;
 
-Cont.      Stmt ::= "continue" ;
+Cont.      Stmt ::= "continue" ";" ;
 
 -- Types ---------------------------------------------------
 
