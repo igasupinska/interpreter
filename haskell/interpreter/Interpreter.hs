@@ -51,35 +51,25 @@ module Interpreter where
     evalExpr (Neg e) = do
         SInt i <- evalExpr e
         return $ SInt (-i)
-    
-    evalExpr (EMul e1 Times e2) = do
-        SInt i1 <- evalExpr e1
-        SInt i2 <- evalExpr e2
-        return $ SInt $ i1 * i2
 
-    evalExpr (EMul e1 Div e2) = do
+    evalExpr (EMul e1 op e2) = do
         SInt i1 <- evalExpr e1
         SInt i2 <- evalExpr e2
-        if i2 == 0
-            then throwError DivZero
-            else return $ SInt $ i1 `div` i2 
+        case op of
+            Times -> return $ SInt $ i1 * i2
+            Div -> if i2 == 0
+                    then throwError DivZero
+                    else return $ SInt $ i1 `div` i2 
+            Mod -> if i2 == 0
+                    then throwError DivZero --Iga: może dodać ModZero
+                    else return $ SInt $ i1 `mod` i2 
 
-    evalExpr (EMul e1 Mod e2) = do
+    evalExpr (EAdd e1 op e2) = do
         SInt i1 <- evalExpr e1
         SInt i2 <- evalExpr e2
-        if i2 == 0
-            then throwError DivZero
-            else return $ SInt $ i1 `mod` i2 
-    
-    evalExpr (EAdd e1 Plus e2) = do
-        SInt i1 <- evalExpr e1
-        SInt i2 <- evalExpr e2
-        return $ SInt $ i1 + i2
-    
-    evalExpr (EAdd e1 Minus e2) = do
-        SInt i1 <- evalExpr e1
-        SInt i2 <- evalExpr e2
-        return $ SInt $ i1 - i2
+        case op of
+            Plus  -> return $ SInt $ i1 + i2
+            Minus -> return $ SInt $ i1 - i2
 
     --string expr
     evalExpr (EString s) = return $ SStr s
@@ -200,11 +190,7 @@ module Interpreter where
    --Iga: tu się będzie powtarzać
     execStmtHelper (BStmt (Block [])) = do
         (venv, fenv) <- ask
-        return (venv, fenv, Nothing, FReturn)
-
-    execStmtHelper (BStmt (Block [s])) = do
-        (venv, fenv) <- ask
-        local (\_ ->(venv, fenv)) (execStmt s)
+        return (venv, fenv, Nothing, FNothing)
 
     execStmtHelper (BStmt (Block (s:ss))) = do
         (venv, fenv, val, flag) <- execStmt s
@@ -272,7 +258,7 @@ module Interpreter where
 
     execStmt (Ret e) = do
         (venv, fenv) <- ask
-        expr <- local(\_ -> (venv, fenv)) (evalExpr e)
+        expr <- evalExpr e
         return (venv, fenv, Just expr, FReturn)
 
     execStmt (VRet) = do
@@ -283,7 +269,7 @@ module Interpreter where
         (venv, fenv) <- ask
         expr <- evalExpr e
         case expr of
-            SBool True -> execStmt (BStmt b)
+            SBool True -> execStmt $ BStmt b
             SBool False -> return (venv, fenv, Nothing, FNothing)
 
     execStmt (CondElse e if_b else_b) = do
