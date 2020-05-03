@@ -3,6 +3,7 @@ import LexGramm
 import ParGramm
 import ErrM
 
+import TypeChecker
 import Interpreter
 import Types
 
@@ -34,14 +35,20 @@ parse input = let src = myLexer input in
                         putStrLn "Parse Failed...\n"
                         exitFailure
             Ok c  ->  do
-                res <- runProg c
-                case res of
+                checkRes <- checkProg c
+                case checkRes of
                     Left err -> do
                         putStrLn $ show err
                         exitFailure
-                    Right (val, store) -> do
-                        putStrLn $ printResult (val, store)
-                        exitSuccess
+                    Right () -> do
+                        res <- runProg c
+                        case res of
+                            Left err -> do
+                                putStrLn $ show err
+                                exitFailure
+                            Right (val, store) -> do
+                                putStrLn $ printResult (val, store)
+                                exitSuccess
 
 
 -- main :: IO ()

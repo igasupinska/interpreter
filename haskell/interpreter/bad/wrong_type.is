@@ -1,0 +1,8 @@
+int main() {
+
+	while ("napis" < "iga") {
+		print("ok");
+	}
+
+	return 0;
+}

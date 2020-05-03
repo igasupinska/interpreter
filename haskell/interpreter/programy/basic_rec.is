@@ -1,0 +1,16 @@
+int decrToZero(int num) {
+	if (num == 0) {
+		return 0;
+	}
+
+	return decrToZero(num-1);
+}
+
+int main() {
+	int x = 10;
+	if (decrToZero(x) == 0) {
+		print("OK");
+	}
+
+	return 0;
+}

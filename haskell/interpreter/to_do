@@ -9,6 +9,11 @@
 - poprawić prepArgs -> musi być w wywołaniu funkcji, bo rekurencja
 					-> czy musi być przy wczytywaniu funkcji wtedy?
 
+
+TypeChecker
+- dodać nazwy zmiennych do komunikatów o błędzie
+- sprawdzić, czy zmienna o tej nazwie w ogóle zadeklarowana
+
 kompilacja:
 bnfc -m gramm.cf
 make
