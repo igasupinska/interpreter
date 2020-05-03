@@ -111,6 +111,7 @@ module Interpreter where
     evalExpr (EApp fun rArgs) = do
         (venv, fenv) <- ask
         let ((FnDef typ ident fArgs funBody), venv2) = lookupFun fun fenv
+        venv2 <- prepArgs fArgs
         venv3 <- mapArgs fArgs rArgs venv2
         (venv3, fenv3, val, flag) <- local (\_ -> (venv3, fenv)) (execStmt $ BStmt funBody)
         case val of
@@ -358,8 +359,8 @@ module Interpreter where
     runFunction :: TopDef -> MM (VEnv, FEnv)
     runFunction (FnDef typ ident args block) = do
         (venv, fenv) <- ask
-        venv2 <- prepArgs args
-        return $ (venv, insertFun ident ((FnDef typ ident args block), venv2) fenv)     
+        -- venv2 <- prepArgs args
+        return $ (venv, insertFun ident ((FnDef typ ident args block), venv) fenv)     
 
     
     runProg prog = runExceptT $ runStateT (runReaderT (runProgram prog) (Map.empty, Map.empty)) (Map.empty, 0) --Iga: skopiowane
