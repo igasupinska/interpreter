@@ -53,7 +53,6 @@ module TypeChecker where
     checkExpr (EVar ident) = do
         (env, fenv) <- ask
         return (lookupVar ident env)
-
     
     --int expr
     --Iga: te dwa poniżej chyba inaczej
@@ -142,6 +141,12 @@ module TypeChecker where
 ------------------ STATEMENTS --------------------
 --------------------------------------------------
 
+    checkDuplVar :: Ident -> TM ()
+    checkDuplVar ident = do
+        (venv, _) <- ask
+        if member ident venv
+            then throwError ("Variable " ++ show ident ++ " already declared")
+            else return ()
 
     checkStmt :: Stmt -> TM (EnvT)    
     
@@ -151,6 +156,7 @@ module TypeChecker where
         return env
 
     checkStmt (Decl t (NoInit ident)) = do
+        checkDuplVar ident
         (venv, fenv) <- ask
         let venv' = insertVar ident t venv
         return (venv', fenv)
@@ -162,6 +168,7 @@ module TypeChecker where
             else throwError ("Type error: initializing variable of type " ++ show t ++ " with expression of type " ++ show tExpr)
 
     checkStmt (Decl (Arr t) (ArrNoInit ident expr)) = do
+        checkDuplVar ident
         t1 <- checkExpr expr
         if t1 /= Int
             then throwError ("Type error: cannot declare array of size " ++ show t1)
