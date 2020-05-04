@@ -63,7 +63,7 @@ module TypeChecker where
             then throwError ("Function " ++ ident ++ " already defined.")
             else do
                 let fenv' = insert id def fenv
-                return fenv
+                return fenv'
 
 
 --------------------------------------------------
@@ -310,9 +310,7 @@ module TypeChecker where
 --------------------------------------------------
 
     checkProgram :: Program -> TM ()
-    checkProgram (Program [f]) = do
-        env <- checkFunction f
-        return ()
+    checkProgram (Program []) = return ()
     
     checkProgram (Program (f:fs)) = do 
                     env <- checkFunction f
