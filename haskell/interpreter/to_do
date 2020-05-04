@@ -9,6 +9,8 @@
 - poprawić prepArgs -> musi być w wywołaniu funkcji, bo rekurencja
 					-> czy musi być przy wczytywaniu funkcji wtedy?
 
+- dodać domyślną wartość przy inicjalizacji za krótką listą
+
 
 TypeChecker
 - dodać nazwy zmiennych do komunikatów o błędzie
