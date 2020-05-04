@@ -20,10 +20,8 @@ module Interpreter where
     insertVar :: Ident -> Loc -> VEnv -> VEnv
     insertVar name loc env = insert name loc env
 
--- Iga: data TopDef = FnDef Type Ident [ArgOrRef] Block
---Iga: tu zmienić
     lookupFun :: Ident -> FEnv -> (TopDef, VEnv)
-    lookupFun ident fenv = fromMaybe ((FnDef Int (Ident "funkcja") [] (Block [])), Map.empty) (lookup ident fenv)
+    lookupFun ident fenv = fenv ! ident
 
     insertFun :: Ident -> (TopDef, VEnv) -> FEnv -> FEnv
     insertFun ident def fenv = insert ident def fenv
