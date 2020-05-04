@@ -33,23 +33,37 @@ module TypeChecker where
 
 
     lookupVar :: Ident -> [VEnvT] -> TM (Type)
-    lookupVar (Ident ident) [] = throwError ("Variable " ++ ident ++ " not declared")
+    lookupVar (Ident ident) [] = throwError ("Variable " ++ ident ++ " not declared.")
 
-    lookupVar ident (e:es) =
+    lookupVar ident (e:es) = do
         if member ident e
-            then return $ fromMaybe (Int) (lookup ident e) --Iga: poprawić
+            then return $ e ! ident
             else lookupVar ident es
 
-    insertVar :: Ident -> Type -> [VEnvT] -> [VEnvT]
-    insertVar name typ (e:es) = insert name typ e:es
+    insertVar :: Ident -> Type -> TM ([VEnvT])
+    insertVar id@(Ident ident) typ = do
+        ((v:vs), _) <- ask
+        if member id v
+            then throwError ("Variable " ++ ident ++ " already declared.")
+            else do
+                let v' = insert id typ v
+                return $ (v':vs)
 
--- Iga: data TopDef = FnDef Type Ident [ArgOrRef] Block
---Iga: tu zmienić fromMaybe
-    lookupFun :: Ident -> FEnvT -> FnDefT
-    lookupFun ident fenv = fromMaybe (Int, [], []) (lookup ident fenv)
+    lookupFun :: Ident -> TM (FnDefT)
+    lookupFun id@(Ident ident) = do
+        (venv, fenv) <- ask
+        if member id fenv
+            then return $ fenv ! id
+            else throwError ("Function " ++ ident ++ " not defined.")
 
-    insertFun :: Ident -> FnDefT -> FEnvT -> FEnvT
-    insertFun ident def fenv = insert ident def fenv
+    insertFun :: Ident -> FnDefT -> TM (FEnvT)
+    insertFun id@(Ident ident) def = do
+        (_, fenv) <- ask
+        if member id fenv
+            then throwError ("Function " ++ ident ++ " already defined.")
+            else do
+                let fenv' = insert id def fenv
+                return fenv
 
 
 --------------------------------------------------
@@ -57,6 +71,8 @@ module TypeChecker where
 --------------------------------------------------
 
     correctTypes :: Type -> [Expr] -> TM ()
+    correctTypes expT [] = return ()
+
     correctTypes expT (e:es) = do
         correctType expT e
         correctTypes expT es
@@ -140,8 +156,7 @@ module TypeChecker where
     --Iga:upiekszyc
     --Iga: type FEnvT = Map Ident ([ArgType], [VEnvT])
     checkExpr (EApp ident rArgs) = do
-        (venv, fenv) <- ask
-        let (ret, fArgs, env) = lookupFun ident fenv
+        (ret, fArgs, env) <- lookupFun ident
         validateArgs rArgs fArgs
         return ret
 
@@ -173,14 +188,6 @@ module TypeChecker where
 --------------------------------------------------
 ------------------ STATEMENTS --------------------
 --------------------------------------------------
-
-    --Iga:upiekszyc
-    checkRedecl :: Ident -> TM ()
-    checkRedecl ident = do
-        ((venv:venvs), _) <- ask
-        if member ident venv
-            then throwError ("Variable " ++ show ident ++ " already declared.")
-            else return ()
     
     --Iga:upiekszyc
     checkStmtBlockHelper :: Block -> TM ()
@@ -199,21 +206,19 @@ module TypeChecker where
         return (venv, fenv)
 
     checkStmt (Decl t (NoInit ident)) = do
-        checkRedecl ident
         (venv, fenv) <- ask
-        let venv' = insertVar ident t venv
+        venv' <- insertVar ident t
         return (venv', fenv)
 
     checkStmt (Decl t (Init ident expr)) = do
         correctType t expr
         checkStmt (Decl t (NoInit ident))
-        `catchError` \err -> throwError ("Type error: in initializing variable. " ++ err)
+        `catchError` \err -> throwError ("Type error: variable declaration. " ++ err)
 
     checkStmt (Decl (Arr t) (ArrNoInit ident expr)) = do
-        checkRedecl ident
         correctType Int expr
         (venv, fenv) <- ask
-        let venv' = insertVar ident (Arr t) venv
+        venv' <- insertVar ident (Arr t)
         return (venv', fenv)
         `catchError` \err -> throwError ("Type error: in array size expression. " ++ err)
     
@@ -222,7 +227,6 @@ module TypeChecker where
         correctTypes t l
         return env
         `catchError` \err -> throwError ("Type error: list initialization. " ++ err)
-
 
     checkStmt (Ass ident e) = do
         (venv, fenv) <- ask
@@ -332,8 +336,9 @@ module TypeChecker where
         (venv, fenv) <- ask
         let argTypes = prepArgTypes args
         let venv' = addArgsToEnv argTypes Map.empty
-        local (\_ -> ((venv':venv), fenv)) (checkStmtBlockHelper block)
-        return $ (venv, insertFun ident (typ, argTypes, venv) fenv)     
+        fenv' <- insertFun ident (typ, argTypes, venv)
+        local (\_ -> ((venv':venv), fenv')) (checkStmtBlockHelper block)
+        return $ (venv, fenv')
      
 
     checkProg prog = runExceptT $ runReaderT (checkProgram prog) ([], Map.empty)

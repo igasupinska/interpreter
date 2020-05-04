@@ -15,7 +15,7 @@ module Interpreter where
     getNewLoc (store, lastLoc) = (store, lastLoc + 1)
 
     lookupVar :: Ident -> VEnv -> Loc
-    lookupVar name env = fromMaybe 99 (lookup name env)
+    lookupVar name env = env ! name
 
     insertVar :: Ident -> Loc -> VEnv -> VEnv
     insertVar name loc env = insert name loc env
@@ -29,7 +29,7 @@ module Interpreter where
     insertFun ident def fenv = insert ident def fenv
 
     lookupStore :: Loc -> Store -> StoredVal
-    lookupStore loc (store, _) = fromMaybe (SStr $ "Not found") (lookup loc store)
+    lookupStore loc (store, _) = store ! loc
 
     insertStore :: Loc -> StoredVal -> Store -> Store
     insertStore loc val (store, lastLoc) = (insert loc val store, lastLoc)
