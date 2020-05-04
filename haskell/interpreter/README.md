@@ -16,7 +16,7 @@ Instrukcje języka takie jak instrukcja `pusta`, `if else`, `while` czy `return`
 
 Wymagana jest deklaracja zmiennej przed jej użyciem. Zmienne zadeklarowane w bloku, widoczne są jedynie w tym bloku i przesłaniają zmienne spoza bloku. Zmienne w bloku muszą mieć unikalne nazwy.
 
-Tablice deklarowane są `array<typ> nazwa_tablicy(rozmiar)`. W przypadku braku inicjalizacji, tablica wypełniana jest domyślnymi wartościami dla ustalonego typu. Tablica może zostać zainicjowana listą inicjalizacyjną, np. `array<int> nums(5) {1,2,3,4,5}`.
+Tablice deklarowane są `array<typ> nazwa_tablicy(rozmiar)`. W przypadku braku inicjalizacji, tablica wypełniana jest domyślnymi wartościami dla ustalonego typu. Tablica może zostać zainicjowana listą inicjalizacyjną, np. `array<int> nums(5) {1,2,3,4,5}`. W przypadku listy inicjalizacyjnej krótszej niż wielkość tablicy, na niezainicjalizowane pola zostaną przypisane wartości domyślne dla danego typu.
 
 Pętla `for i from pocz to kon` wykonuje się `kon - pocz + 1` razy, o ile `kon >= pocz`. W przeciwnym wypadku, pętla nie wykonuje żadnego obrotu. `pocz` i `kon` muszą być wyrażeniami typu int; nie ma możliwości zmiany kroku pętli.
 
