@@ -1,8 +1,14 @@
 int main() {
 
-	while ("napis" < "iga") {
-		print("ok");
+	int x = 5;
+	
+	{
+		string x = "iga";
+		int x = 5;
+
 	}
+
+	print(x);
 
 	return 0;
 }

@@ -18,29 +18,37 @@ module TypeChecker where
     --variable types environment
     type VEnvT = Map Ident Type
     
-    --function types environment
-    --[return type, args types]
-    type FEnvT = Map Ident ([ArgType], VEnvT)
+    --(return type, args type, environments)
+    type FnDefT = (Type, [ArgType], [VEnvT])
 
-    type EnvT = (VEnvT, FEnvT)
+    --function types environment
+    type FEnvT = Map Ident FnDefT
+
+    --list of venv makes for block visible venv, the most nested one first
+    type EnvT = ([VEnvT], FEnvT)
 
     --keeps type of argument and info whether its reference or not
-    --(typ, isRef, isArr)
-    type ArgType = (Type, Bool, Bool)
+    --(typ, isRef)
+    type ArgType = (Ident, Type, Bool)
 
 
-    lookupVar :: Ident -> VEnvT -> Type
-    lookupVar name env = fromMaybe (Int) (lookup name env) --Iga: poprawić
+    lookupVar :: Ident -> [VEnvT] -> TM (Type)
+    lookupVar ident [] = throwError ("Variable " ++ show ident ++ " not declared")
 
-    insertVar :: Ident -> Type -> VEnvT -> VEnvT
-    insertVar name typ env = insert name typ env
+    lookupVar ident (e:es) =
+        if member ident e
+            then return $ fromMaybe (Int) (lookup ident e) --Iga: poprawić
+            else lookupVar ident es
+
+    insertVar :: Ident -> Type -> [VEnvT] -> [VEnvT]
+    insertVar name typ (e:es) = insert name typ e:es
 
 -- Iga: data TopDef = FnDef Type Ident [ArgOrRef] Block
---Iga: tu zmienić
-    lookupFun :: Ident -> FEnvT -> ([ArgType], VEnvT)
-    lookupFun ident fenv = fromMaybe ([], Map.empty) (lookup ident fenv)
+--Iga: tu zmienić fromMaybe
+    lookupFun :: Ident -> FEnvT -> FnDefT
+    lookupFun ident fenv = fromMaybe (Int, [], []) (lookup ident fenv)
 
-    insertFun :: Ident -> ([ArgType], VEnvT) -> FEnvT -> FEnvT
+    insertFun :: Ident -> FnDefT -> FEnvT -> FEnvT
     insertFun ident def fenv = insert ident def fenv
 
 
@@ -52,13 +60,15 @@ module TypeChecker where
 
     checkExpr (EVar ident) = do
         (env, fenv) <- ask
-        return (lookupVar ident env)
+        lookupVar ident env
     
-    --int expr
-    --Iga: te dwa poniżej chyba inaczej
     checkExpr (ELitInt _) = return Int
     
-    checkExpr (Neg _) = return Int
+    checkExpr (Neg e) = do
+        t <- checkExpr e
+        if t == Int
+            then return Int
+            else throwError ("Negating type " ++ show t)
 
     checkExpr (EMul e1 op e2) = do
         t1 <- checkExpr e1
@@ -111,19 +121,6 @@ module TypeChecker where
             then return Bool
             else throwError ("Type error: " ++ show t1 ++ " || " ++ show t2)
 
-    -- --function expr
-
-    -- --Iga: data TopDef = FnDef Type Ident [ArgOrRef] Block
-    -- evalExpr (EApp fun rArgs) = do
-    --     (venv, fenv) <- ask
-    --     let ((FnDef typ ident fArgs funBody), venv2) = lookupFun fun fenv
-    --     venv2 <- prepArgs fArgs
-    --     venv3 <- mapArgs fArgs rArgs venv2
-    --     (venv3, fenv3, val, flag) <- local (\_ -> (venv3, fenv)) (execStmt $ BStmt funBody)
-    --     case val of
-    --         Just i -> return i
-    --         Nothing -> return $ SInt 0 --Iga: tu poprawić
-
     --array expr
     checkExpr (ArrAcc a e) = do
         t <- checkExpr e
@@ -131,32 +128,72 @@ module TypeChecker where
             then throwError ("Type error: trying to access array at index of type " ++ show t)
             else do
                 (venv, fenv) <- ask
-                let t = lookupVar a venv
+                t <- lookupVar a venv
                 case t of
                     Arr x -> return x
                     _ -> throwError ("Type error: not an array but " ++ show t)
+
+    -- --function expr
+
+    --Iga: type FEnvT = Map Ident ([ArgType], [VEnvT])
+    checkExpr (EApp ident rArgs) = do
+        (venv, fenv) <- ask
+        let (ret, fArgs, env) = lookupFun ident fenv
+        validateArgs rArgs fArgs
+        return ret
+
+    --check if formal argument type is the same as actual one
+    validateArgs :: [ExprOrRef] -> [ArgType] -> TM ()
+    validateArgs [] [] = return ()
+    validateArgs [] fArgs = throwError ("Number of arguments doesn't match")
+    validateArgs rArgs [] = throwError ("Number of arguments doesn't match")
+    validateArgs (ERefArg r:rs) (f:fs) = do
+        case f of
+            (ident, t, False) -> throwError ("Expected expression arg but got reference")
+            (ident, t, True) -> do
+                t' <- checkExpr (EVar r)
+                if t /= t'
+                    then throwError ("Argument types don't match")
+                    else validateArgs rs fs
+
+    validateArgs (EExpArg r:rs) (f:fs) = do
+        case f of
+            (ident, t, True) -> throwError("Expected reference but got expression argument")
+            (ident, t, False) -> do
+                t' <- checkExpr r
+                if t /= t'
+                    then throwError ("Argument types don't match")
+                    else validateArgs rs fs
 
 
 --------------------------------------------------
 ------------------ STATEMENTS --------------------
 --------------------------------------------------
 
-    checkDuplVar :: Ident -> TM ()
-    checkDuplVar ident = do
-        (venv, _) <- ask
+    checkRedecl :: Ident -> TM ()
+    checkRedecl ident = do
+        ((venv:venvs), _) <- ask
         if member ident venv
             then throwError ("Variable " ++ show ident ++ " already declared")
             else return ()
 
-    checkStmt :: Stmt -> TM (EnvT)    
+    checkStmtBlockHelper :: Block -> TM ()
+    checkStmtBlockHelper (Block []) = return ()
+    checkStmtBlockHelper (Block (b:bs)) = do
+        (venv, fenv) <- checkStmt b
+        -- return ()
+        local (\_ -> (venv, fenv)) (checkStmtBlockHelper (Block bs))
+
+    checkStmt :: Stmt -> TM (EnvT)
     
     --Iga: tu tak naprawdę trzeba wejść do wnętrza bloku i przepatrzeć
     checkStmt (BStmt (Block b)) = do
-        env <- ask
-        return env
+        (venv, fenv) <- ask
+        local (\_ -> (Map.empty:venv, fenv)) (checkStmtBlockHelper (Block b))
+        return (venv, fenv)
 
     checkStmt (Decl t (NoInit ident)) = do
-        checkDuplVar ident
+        checkRedecl ident
         (venv, fenv) <- ask
         let venv' = insertVar ident t venv
         return (venv', fenv)
@@ -168,7 +205,7 @@ module TypeChecker where
             else throwError ("Type error: initializing variable of type " ++ show t ++ " with expression of type " ++ show tExpr)
 
     checkStmt (Decl (Arr t) (ArrNoInit ident expr)) = do
-        checkDuplVar ident
+        checkRedecl ident
         t1 <- checkExpr expr
         if t1 /= Int
             then throwError ("Type error: cannot declare array of size " ++ show t1)
@@ -191,7 +228,7 @@ module TypeChecker where
 
     checkStmt (Ass ident e) = do
         (venv, fenv) <- ask
-        let t1 = lookupVar ident venv
+        t1 <- lookupVar ident venv
         t2 <- checkExpr e
         if t1 == t2
             then return (venv, fenv)
@@ -203,7 +240,7 @@ module TypeChecker where
             then throwError ("Type error: array index should be Int, not " ++ show t)
             else do
                 (venv, fenv) <- ask
-                let t1 = lookupVar ident venv
+                t1 <- lookupVar ident venv
                 case t1 of
                     Arr x -> do
                         t <- checkExpr e
@@ -287,40 +324,26 @@ module TypeChecker where
                     env <- checkFunction f
                     local (\_ -> env) (checkProgram (Program fs))
 
-    
     --make list of types of arguments
     prepArgTypes :: [ArgOrRef] -> [ArgType]
-    
     prepArgTypes [] = []
+    prepArgTypes (RefArg t ident:as) = (ident, t, True):prepArgTypes as
+    prepArgTypes (Arg t ident:as) = (ident, t, False):prepArgTypes as
 
-    prepArgTypes (RefArg (Arr t) _:as) = (t, True, True):prepArgTypes as
-
-    prepArgTypes (RefArg t _:as) = (t, True, False):prepArgTypes as
-
-    prepArgs (Arg (Arr t) _:as) = (t, False, True):prepArgTypes as
-    
-    prepArgs (Arg t _:as) = (t, False, False):prepArgTypes as
+    addArgsToEnv :: [ArgType] -> VEnvT -> VEnvT
+    addArgsToEnv [] env = env
+    addArgsToEnv ((ident, t, isRef):args) env =
+        let venv' = insert ident t env in
+            addArgsToEnv args venv'
 
     checkFunction :: TopDef -> TM (EnvT)
-    --Iga: tu jakoś lepiej rozróżniać, czy tablica czy nie
-    checkFunction (FnDef (Arr typ) ident args block) = do
-        (venv, fenv) <- ask
-        let argTypes = prepArgTypes args
-        return $ (venv, insertFun ident ((typ, False, True):argTypes, venv) fenv)
 
     checkFunction (FnDef typ ident args block) = do
         (venv, fenv) <- ask
         let argTypes = prepArgTypes args
-        checkFunctionBody block
-        return $ (venv, insertFun ident ((typ, False, False):argTypes, venv) fenv)     
+        let venv' = addArgsToEnv argTypes Map.empty
+        local (\_ -> ((venv':venv), fenv)) (checkStmtBlockHelper block)
+        return $ (venv, insertFun ident (typ, argTypes, venv) fenv)     
      
-    
-    checkFunctionBody :: Block -> TM ()
-    checkFunctionBody (Block []) = return ()
-    checkFunctionBody (Block (s:ss)) = do
-        env <- ask
-        env2 <- local (\_ -> env) (checkStmt s)
-        local (\_ -> env2) (checkFunctionBody (Block ss))
-        return ()
 
-    checkProg prog = runExceptT $ runReaderT (checkProgram prog) (Map.empty, Map.empty)
+    checkProg prog = runExceptT $ runReaderT (checkProgram prog) ([], Map.empty)

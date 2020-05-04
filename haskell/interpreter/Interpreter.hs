@@ -136,7 +136,7 @@ module Interpreter where
     mapArgs (RefArg typ a:fArgs) (ERefArg b:rArgs) venv2 = do
         (venv, fenv) <- ask
         let loc = lookupVar b venv
-        let newEnv = insertVar b loc venv2
+        let newEnv = insertVar a loc venv2
         mapArgs fArgs rArgs newEnv
 
     mapArgs (Arg (Arr typ) a:fArgs) (EExpArg b:rArgs) venv = do
@@ -345,6 +345,7 @@ module Interpreter where
         (venv, fenv) <- ask
         return venv
     prepArgs (RefArg typ a:as) = do
+        -- Iga:argumenty przez referencję nie potrzebują stora, tylko muszą mieć nazwę
         (venv, fenv) <- ask
         local (\_ -> (venv, fenv)) (prepArgs as)
     prepArgs (Arg (Arr t) a:as) = do

@@ -13,6 +13,9 @@
 TypeChecker
 - dodać nazwy zmiennych do komunikatów o błędzie
 - sprawdzić, czy zmienna o tej nazwie w ogóle zadeklarowana
+- pozwalać na redeklaracje w blokach
+- czy funkcja przypadkiem nie dostaje pustego środowiska, bo nie widzi nic?
+- zrobić catchowanie błędów, żeby budować sensowne komunikaty
 
 kompilacja:
 bnfc -m gramm.cf
