@@ -85,7 +85,6 @@ module Interpreter where
 
     --array expr
     evalExpr (ArrAcc a e) = do
-        (venv, gvenv, fenv) <- ask
         loc <- lookupVar a
         SInt size <- gets (lookupStore loc)
         SInt idx <- evalExpr e
@@ -99,13 +98,13 @@ module Interpreter where
 
     --Iga: data TopDef = FnDef Type Ident [ArgOrRef] Block
     evalExpr (EApp fun rArgs) = do
-        (venv, gvenv, fenv) <- ask
+        env <- ask
         
-        let ((FnDef typ ident fArgs funBody), gvenv') = lookupFun fun fenv
+        let ((FnDef typ ident fArgs funBody), gvenv') = lookupFun fun (fEnv env)
         
-        venv' <- local (\_ -> (venv, gvenv', fenv)) (mapArgs fArgs rArgs)
+        venv' <- local (\_ -> env {gEnv = gvenv'}) (mapArgs fArgs rArgs)
         
-        (_, _, _, val, flag) <- local (\_ -> (venv', gvenv', fenv)) (execStmt $ BStmt funBody)
+        (_, val, flag) <- local (\_ -> env {vEnv = venv', gEnv = gvenv'}) (execStmt $ BStmt funBody)
         case val of
             Just i -> return i
             Nothing -> return $ SInt 0 --Iga: tu poprawić
@@ -113,14 +112,14 @@ module Interpreter where
 
     mapArgs :: [ArgOrRef] -> [ExprOrRef] -> MM (VEnv)
     mapArgs [] [] = do
-        (venv, _, _) <- ask
-        return venv
+        env <- ask
+        return $ vEnv env
 
     mapArgs (RefArg typ a:fArgs) (ERefArg b:rArgs) = do
-        (venv, gvenv, fenv) <- ask
+        env <- ask
         loc <- lookupVar b
-        let venv' = insertVar a loc venv
-        local (\_ -> (venv', gvenv, fenv)) (mapArgs fArgs rArgs)
+        let venv' = insertVar a loc (vEnv env)
+        local (\_ -> env {vEnv = venv'}) (mapArgs fArgs rArgs)
 
 
     -- execStmt (Decl t (ArrInit ident expr initList)) = do
@@ -142,17 +141,16 @@ module Interpreter where
     mapArgs (Arg typ a:fArgs) (EExpArg b:rArgs) = do
         (s, loc) <- get
         modify (getNewLoc)
-        (venv, gvenv, fenv) <- ask
-        let venv' = insertVar a loc venv
+        env <- ask
+        let venv' = insertVar a loc (vEnv env)
         val <- evalExpr b
-        loc <- local (\_ -> (venv', gvenv, fenv)) (lookupVar a)
+        loc <- local (\_ -> env {vEnv = venv'}) (lookupVar a)
         modify (insertStore loc val)
-        local (\_ -> (venv', gvenv, fenv)) (mapArgs fArgs rArgs)
+        local (\_ -> env {vEnv = venv'}) (mapArgs fArgs rArgs)
 
 
     listFromArr :: Expr -> Type -> MM([Expr])
     listFromArr (EVar ident) t = do
-        (venv, gvenv, fenv) <- ask
         loc <- lookupVar ident
         SInt size <- gets (lookupStore loc)
         newArr <- getArr t (loc + 1) size
@@ -186,23 +184,20 @@ module Interpreter where
 --------------------------------------------------
    --Iga: tu się będzie powtarzać
     execStmtHelper (BStmt (Block [])) = do
-        (venv, gvenv, fenv) <- ask
-        return (venv, gvenv, fenv, Nothing, FNothing)
+        env <- ask
+        return (env, Nothing, FNothing)
 
     execStmtHelper (BStmt (Block (s:ss))) = do
-        (venv, gvenv, fenv, val, flag) <- execStmt s
+        (env, val, flag) <- execStmt s
         case flag of
-            FNothing -> local (\_ -> (venv, gvenv, fenv)) (execStmtHelper (BStmt (Block ss)))
-            FReturn -> return (venv, gvenv, fenv, val, flag)
-            FBreak -> return (venv, gvenv, fenv, val, flag)
-            FContinue -> return (venv, gvenv, fenv, val, flag)
+            FNothing -> local (\_ -> env) (execStmtHelper (BStmt (Block ss)))
+            FReturn -> return (env, val, flag)
+            FBreak -> return (env, val, flag)
+            FContinue -> return (env, val, flag)
 
-    execStmt :: Stmt -> MM (VEnv, GEnv, FEnv, Maybe StoredVal, Flag)    
+    execStmt :: Stmt -> MM (Env, Maybe StoredVal, Flag)    
 
-    execStmt (BStmt (Block b)) = do
-        (venv, gvenv, fenv) <- ask
-        (_, _, _, val, flag) <- local (\_ -> (venv, gvenv, fenv)) (execStmtHelper (BStmt (Block b)))
-        return (venv, gvenv, fenv, val, flag)
+    execStmt (BStmt (Block b)) = execStmtHelper (BStmt (Block b))
 
     execStmt (Decl t (NoInit ident)) = do
         let e = getDefaultExpr t
@@ -211,64 +206,66 @@ module Interpreter where
     execStmt (Decl t (Init ident expr)) = do
         (s, loc) <- get
         modify (getNewLoc)
-        (venv, gvenv, fenv) <- ask
-        let newVenv = insertVar ident loc venv
-        local (\_ -> (newVenv, gvenv, fenv)) (execStmt (Ass ident expr))
-        return (newVenv, gvenv, fenv, Nothing, FNothing)
+        env <- ask
+        let venv' = insertVar ident loc (vEnv env)
+        local (\_ -> env {vEnv = venv'}) (execStmt (Ass ident expr))
+        return (env {vEnv = venv'}, Nothing, FNothing)
 
     execStmt (Decl t (ArrNoInit ident expr)) = do
         (s, loc) <- get
         modify (getNewLoc)
-        (venv, gvenv, fenv) <- ask
+        env <- ask
         SInt size <- evalExpr expr
         modify (insertStore loc (SInt size))
         val <- evalExpr $ getDefaultExpr t
         () <- storeArray size (replicate (fromInteger size) (ELitInt 0)) --Iga: tu poprawić
-        return (insertVar ident loc venv, gvenv, fenv, Nothing, FNothing)
+        let venv' = insertVar ident loc (vEnv env)
+        return (env {vEnv = venv'}, Nothing, FNothing)
 
     execStmt (Decl t (ArrInit ident expr initList)) = do
         (s, loc) <- get
         modify (getNewLoc)
-        (venv, gvenv, fenv) <- ask
+        env <- ask
         SInt size <- evalExpr expr
         modify (insertStore loc (SInt size))
         storeArray size initList
-        return (insertVar ident loc venv, gvenv, fenv, Nothing, FNothing)
+        let venv' = insertVar ident loc (vEnv env)
+        return (env {vEnv = venv'}, Nothing, FNothing)
 
     execStmt (Ass ident e) = do
         val <- evalExpr e
-        (venv, gvenv, fenv) <- ask
+        env <- ask
         loc <- lookupVar ident
         modify (insertStore loc val)
-        return (venv, gvenv, fenv, Nothing, FNothing)
+        return (env, Nothing, FNothing)
     
     execStmt (ArrAss ident idx_e e) = do
         SInt idx <- evalExpr idx_e
         val <- evalExpr e
-        (venv, gvenv, fenv) <- ask
+        env <- ask
         loc <- lookupVar ident
         SInt size <- gets (lookupStore loc)
         if idx < size
         then do
             modify (insertStore (loc + 1 + idx) val)
-            return (venv, gvenv, fenv, Nothing, FNothing)
+            return (env, Nothing, FNothing)
         else throwError OutOfBound
 
     execStmt (Ret e) = do
-        (venv, gvenv, fenv) <- ask
+        env <- ask
         expr <- evalExpr e
-        return (venv, gvenv, fenv, Just expr, FReturn)
+        return (env, Just expr, FReturn)
 
     execStmt (VRet) = do
-        (venv, gvenv, fenv) <- ask
-        return (venv, gvenv, fenv, Nothing, FReturn)
+        env <- ask
+        return (env, Nothing, FReturn)
     
     execStmt (Cond e b) = do
-        (venv, gvenv, fenv) <- ask
+        env <- ask
         expr <- evalExpr e
         case expr of
             SBool True -> execStmt $ BStmt b
-            SBool False -> return (venv, gvenv, fenv, Nothing, FNothing)
+            SBool False -> return (env, Nothing, FNothing)
 
     execStmt (CondElse e if_b else_b) = do
         expr <- evalExpr e
@@ -277,52 +274,52 @@ module Interpreter where
             SBool False -> execStmt $ BStmt else_b
 
     execStmt (While e b) = do
-        (venv, gvenv, fenv) <- ask
+        env <- ask
         expr <- evalExpr e
         case expr of
             SBool True -> do
-                (venv2, gvenv2, fenv2, val, flag) <- execStmt (Cond e b)
+                (env', val, flag) <- execStmt (Cond e b)
                 case flag of
-                    FNothing -> local(\_ -> (venv2, gvenv2, fenv2)) (execStmt (While e b))
-                    FReturn -> return (venv2, gvenv2, fenv2, val, flag)
-                    FBreak ->  return (venv2, gvenv2, fenv2, val, FNothing)
-                    FContinue -> local(\_ -> (venv2, gvenv2, fenv2)) (execStmt (While e b))
-            SBool False -> return (venv, gvenv, fenv, Nothing, FNothing)
+                    FNothing -> local(\_ -> env') (execStmt (While e b))
+                    FReturn -> return (env', val, flag)
+                    FBreak ->  return (env', val, FNothing)
+                    FContinue -> local(\_ -> env') (execStmt (While e b))
+            SBool False -> return (env, Nothing, FNothing)
 
 
     --Iga: tu dodać przerwanie returnem
     execStmt (For v start end (Block b)) = do
-        (venv, gvenv, fenv, _, _) <- execStmt (Ass v start)
+        (env, _, _) <- execStmt (Ass v start)
         let incr = Ass v (EAdd (EVar v) Plus (ELitInt 1)) in
-            local(\_ -> (venv, gvenv, fenv)) (execStmt $ While (ERel (EVar v) LTH end) (Block (b ++ [incr])))
+            local(\_ -> env) (execStmt $ While (ERel (EVar v) LTH end) (Block (b ++ [incr])))
 
     
     execStmt (Print e) = do
         expr <- evalExpr e
-        (venv, gvenv, fenv) <- ask
+        env <- ask
         case expr of
             SInt expr  -> do
                         liftIO $ putStrLn $ show expr
-                        return (venv, gvenv, fenv, Nothing, FNothing)
+                        return (env, Nothing, FNothing)
             SBool expr -> do
                         liftIO $ putStrLn $ show expr
-                        return (venv, gvenv, fenv, Nothing, FNothing)
+                        return (env, Nothing, FNothing)
             SStr expr  -> do
                         liftIO $ putStrLn $ show expr
-                        return (venv, gvenv, fenv, Nothing, FNothing)
+                        return (env, Nothing, FNothing)
     
     execStmt (SExp e) = do
-        (env, gvenv, fenv) <- ask
+        env <- ask
         val <- evalExpr e
-        return (env, gvenv, fenv, Just val, FNothing)
+        return (env, Just val, FNothing)
     
     execStmt (Break) = do
-        (venv, gvenv, fenv) <- ask
-        return (venv, gvenv, fenv, Nothing, FBreak)
+        env <- ask
+        return (env, Nothing, FBreak)
     
     execStmt (Cont) = do
-        (venv, gvenv, fenv) <- ask
-        return (venv, gvenv, fenv, Nothing, FContinue)
+        env <- ask
+        return (env, Nothing, FContinue)
 
 --------------------------------------------------
 --------------------- RUN ------------------------
@@ -338,20 +335,20 @@ module Interpreter where
                     local (\_ -> env) (runProgram (Program fs))
 
     --Iga: przenazwać
-    runFunction :: TopDef -> MM (VEnv, GEnv, FEnv)
+    runFunction :: TopDef -> MM (Env)
     runFunction (GlobalVar typ item) = do
-        (venv, gvenv, fenv) <- ask
+        env <- ask
         case item of
             (NoInit id@(Ident ident)) -> do
                 gvenv' <- insertGlobalVar id
-                return (venv, gvenv', fenv)
+                return env {gEnv = gvenv'}
             (Init id@(Ident ident) e) -> do
                 val <- evalExpr e
                 gvenv' <- insertGlobalVar id
-                (venv, gvenv, fenv) <- ask
-                loc <- local (\_ -> (venv, gvenv', fenv)) (lookupVar id)
+                env <- ask
+                loc <- local (\_ -> env {gEnv = gvenv'}) (lookupVar id)
                 modify (insertStore loc val)
-                return (venv, gvenv', fenv)
+                return env {gEnv = gvenv'}
             -- (ArrNoInit id@(Ident ident) _) -> do
             --     gvenv' <- insertGlobalVar id (Arr typ)
             --     return (venv, gvenv', fenv)
@@ -360,12 +357,12 @@ module Interpreter where
             --     return (venv, gvenv', fenv)
 
     runFunction (FnDef typ ident args block) = do
-        (venv, gvenv, fenv) <- ask
-        -- venv2 <- prepArgs args
-        return $ (venv, gvenv, insertFun ident ((FnDef typ ident args block), gvenv) fenv)     
+        env <- ask
+        let fenv = insertFun ident ((FnDef typ ident args block), (gEnv env)) (fEnv env)
+        return $ env {fEnv = fenv}
 
     
-    runProg prog = runExceptT $ runStateT (runReaderT (runProgram prog) (Map.empty, Map.empty, Map.empty)) (Map.empty, 0) --Iga: skopiowane
+    runProg prog = runExceptT $ runStateT (runReaderT (runProgram prog) initialEnv) (Map.empty, 0) --Iga: skopiowane
 
 
 
