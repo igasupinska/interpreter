@@ -24,7 +24,7 @@
     type GEnv = Map Ident Loc
     
     --function environment
-    type FEnv = Map Ident TopDef
+    type FEnv = Map Ident (TopDef, GEnv)
 
     type Env = (VEnv, FEnv)
     
