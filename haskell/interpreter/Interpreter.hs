@@ -197,7 +197,10 @@ module Interpreter where
 
     execStmt :: Stmt -> MM (Env, Maybe StoredVal, Flag)    
 
-    execStmt (BStmt (Block b)) = execStmtHelper (BStmt (Block b))
+    execStmt (BStmt (Block b)) = do
+        env <- ask
+        (_, val, flag) <- execStmtHelper (BStmt (Block b))
+        return (env, val, flag)
 
     execStmt (Decl t (NoInit ident)) = do
         let e = getDefaultExpr t
