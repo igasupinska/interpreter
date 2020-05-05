@@ -40,8 +40,11 @@ module TypeChecker where
 
     --keeps type of argument and info whether its reference or not
     --(typ, isRef)
-    type ArgType = (Ident, Type, Bool)
-
+    data ArgType = ArgType
+        { ident :: Ident
+        , typ :: Type
+        , isRef :: Bool
+        }
 
     lookupVar :: Ident -> [VEnvT] -> TM (Type)
     lookupVar id@(Ident ident) [] = do
@@ -192,20 +195,22 @@ module TypeChecker where
     validateArgs [] fArgs = throwError ("Number of arguments doesn't match")
     validateArgs rArgs [] = throwError ("Number of arguments doesn't match")
     validateArgs (ERefArg r:rs) (f:fs) = do
-        case f of
-            (ident, t, False) -> throwError ("Expected expression arg but got reference")
-            (ident, t, True) -> do
+        if (isRef f)
+            then do
                 t' <- checkExpr (EVar r)
-                if t /= t'
+                if t' /= (typ f)
                     then throwError ("Argument types don't match")
                     else validateArgs rs fs
+            else throwError ("Expected expression arg but got reference")
+
+
     --Iga:upiekszyc
     validateArgs (EExpArg r:rs) (f:fs) = do
-        case f of
-            (ident, t, True) -> throwError("Expected reference but got expression argument")
-            (ident, t, False) -> do
+        if (isRef f)
+            then throwError("Expected reference but got expression argument")
+            else do
                 t' <- checkExpr r
-                if t /= t'
+                if t' /= (typ f)
                     then throwError ("Argument types don't match")
                     else validateArgs rs fs
 
@@ -349,13 +354,13 @@ module TypeChecker where
     --make list of types of arguments
     prepArgTypes :: [ArgOrRef] -> [ArgType]
     prepArgTypes [] = []
-    prepArgTypes (RefArg t ident:as) = (ident, t, True):prepArgTypes as
-    prepArgTypes (Arg t ident:as) = (ident, t, False):prepArgTypes as
+    prepArgTypes (RefArg t ident:as) = ArgType {ident = ident, typ = t, isRef = True}:prepArgTypes as
+    prepArgTypes (Arg t ident:as) = ArgType {ident = ident, typ = t, isRef = False}:prepArgTypes as
 
     addArgsToEnv :: [ArgType] -> VEnvT -> VEnvT
     addArgsToEnv [] env = env
-    addArgsToEnv ((ident, t, isRef):args) env =
-        let venv' = insert ident t env in
+    addArgsToEnv (a:args) env =
+        let venv' = insert (ident a) (typ a) env in
             addArgsToEnv args venv'
 
     checkGlobal :: TopDef -> TM (EnvT)
