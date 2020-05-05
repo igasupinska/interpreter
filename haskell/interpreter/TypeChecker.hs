@@ -220,25 +220,27 @@ module TypeChecker where
 --------------------------------------------------
     
     --Iga:upiekszyc
-    checkStmtBlockHelper :: Block -> TM ()
-    checkStmtBlockHelper (Block []) = return ()
-    checkStmtBlockHelper (Block (b:bs)) = do
-        env <- checkStmt b
-        -- return ()
-        local (\_ -> env) (checkStmtBlockHelper (Block bs))
+    checkStmtBlockHelper :: Block -> [Maybe Type] -> TM (Maybe Type)
+    checkStmtBlockHelper (Block []) (r:rs) = do
+        if all (\x -> x == r || isNothing x) rs
+            then return r
+            else throwError ("Type error: different return types.")
+    checkStmtBlockHelper (Block (b:bs)) ret = do
+        (env, r) <- checkStmt b
+        local (\_ -> env) (checkStmtBlockHelper (Block bs) (r:ret))
 
-    checkStmt :: Stmt -> TM (EnvT)
+    checkStmt :: Stmt -> TM (EnvT, Maybe Type)
     
     --Iga: tu tak naprawdę trzeba wejść do wnętrza bloku i przepatrzeć
     checkStmt (BStmt (Block b)) = do
         env <- ask
-        local (\_ -> env {vEnvT = (Map.empty: vEnvT env)}) (checkStmtBlockHelper (Block b))
-        return env
+        ret <- local (\_ -> env {vEnvT = (Map.empty: vEnvT env)}) (checkStmtBlockHelper (Block b) [])
+        return (env, ret)
 
     checkStmt (Decl t (NoInit ident)) = do
         env <- ask
         venv' <- insertVar ident t
-        return env {vEnvT = venv'}
+        return (env {vEnvT = venv'}, Nothing)
 
     checkStmt (Decl t (Init ident expr)) = do
         correctType t expr
@@ -249,20 +251,20 @@ module TypeChecker where
         correctType Int expr
         env <- ask
         venv' <- insertVar ident (Arr t)
-        return env {vEnvT = venv'}
+        return (env {vEnvT = venv'}, Nothing)
         `catchError` \err -> throwError ("Type error: in array size expression. " ++ err)
     
     checkStmt (Decl (Arr t) (ArrInit ident expr l)) = do
-        env <- checkStmt (Decl (Arr t) (ArrNoInit ident expr))
+        (env, _) <- checkStmt (Decl (Arr t) (ArrNoInit ident expr))
         correctTypes t l
-        return env
+        return (env, Nothing)
         `catchError` \err -> throwError ("Type error: list initialization. " ++ err)
 
     checkStmt (Ass ident e) = do
         env <- ask
         t1 <- lookupVar ident (vEnvT env)
         correctType t1 e
-        return env
+        return (env, Nothing)
         `catchError` \err -> throwError ("Type error: in assignment. " ++ err)
     
     checkStmt (ArrAss id@(Ident ident) idx_e e) = do
@@ -272,37 +274,44 @@ module TypeChecker where
         case t1 of
             Arr x -> do
                 correctType x e
-                return env
+                return (env, Nothing)
             _ -> throwError (ident ++ " is not an array.")
         `catchError` \err -> throwError ("Type error: array assignment. " ++ err)
 
     checkStmt (Ret e) = do
-        t1 <- checkExpr e
+        t <- checkExpr e
         --Iga: sprawdzić, czy taki funkcji typ
         env <- ask
-        return env
+        return (env, Just t)
 
     checkStmt (VRet) = do
         --Iga: sprawdzić, czy taki funkcji typ
         env <- ask
-        return env
+        return (env, Just Void)
     
-    checkStmt (Cond e _) = do
+    checkStmt (Cond e b) = do
         env <- ask
         correctType Bool e
-        return env
+        (_, ret) <- checkStmt $ BStmt b
+        return (env, ret)
         `catchError` \err -> throwError ("Type error: if condition. " ++ err)
 
-    checkStmt (CondElse e _ _) = do
+    checkStmt (CondElse e if_b else_b) = do
         env <- ask
         correctType Bool e
-        return env
+        (_, ret1) <- checkStmt $ BStmt if_b
+        (_, ret2) <- checkStmt $ BStmt else_b
+        if ret1 == ret2 || isNothing ret1 || isNothing ret2
+            then if isNothing ret2
+                    then return (env, ret1)
+                    else return (env, ret2)
+        else throwError ("Return statements of different types: " ++ show ret1 ++ " and " ++ show ret2)
         `catchError` \err -> throwError ("Type error: if-else condition. " ++ err)
 
     checkStmt (While e _) = do
         env <- ask
         correctType Bool e
-        return env
+        return (env, Nothing)
         `catchError` \err -> throwError ("Type error: while condition. " ++ err)
 
     checkStmt (For v start end (Block b)) = do
@@ -311,7 +320,7 @@ module TypeChecker where
         correctType Int start
         correctType Int end
         correctType Int (EVar v)
-        return env
+        return (env, Nothing)
         `catchError` \err -> throwError ("Type error: for loop. " ++ err)
         --Iga:co z blokiem?
 
@@ -320,20 +329,20 @@ module TypeChecker where
     checkStmt (Print e) = do
         env <- ask
         t <- checkExpr e
-        return env
+        return (env, Nothing)
 
     checkStmt (SExp e) = do
         env <- ask
         t <- checkExpr e
-        return env
+        return (env, Nothing)
     
     checkStmt (Break) = do
         env <- ask
-        return env
+        return (env, Nothing)
     
     checkStmt (Cont) = do
         env <- ask
-        return env
+        return (env, Nothing)
 
 --------------------------------------------------
 --------------------- RUN ------------------------
@@ -382,13 +391,18 @@ module TypeChecker where
 
     checkFunction :: TopDef -> TM (EnvT)
 
-    checkFunction (FnDef typ ident args block) = do
+    checkFunction (FnDef typ id@(Ident ident) args block) = do
         env <- ask
         let argTypes = prepArgTypes args
         let venv' = addArgsToEnv argTypes Map.empty
-        fenv' <- insertFun ident (typ, argTypes, (vEnvT env))
-        local (\_ -> env {vEnvT = (venv':vEnvT env), fEnvT = fenv'}) (checkStmtBlockHelper block)
-        return env {fEnvT = fenv'}
-     
+        fenv' <- insertFun id (typ, argTypes, (vEnvT env))
+        ret <- local (\_ -> env {vEnvT = (venv':vEnvT env), fEnvT = fenv'}) (checkStmtBlockHelper block [])
+        case ret of
+            Just t -> do
+                if t == typ
+                    then return env {fEnvT = fenv'}
+                    else throwError ("Wrong type of return. Expecting " ++ show typ ++ " but got " ++ show t)
+            Nothing -> throwError ("No return statement.")
+        `catchError` \err -> throwError ("Type error in function " ++ ident ++ ". " ++ err)
 
     checkProg prog = runExceptT $ runReaderT (checkProgram prog) initialEnvT
