@@ -26,7 +26,14 @@
     --function environment
     type FEnv = Map Ident (TopDef, GEnv)
 
-    type Env = (VEnv, FEnv)
+
+    data Env = Env
+        { vEnv :: VEnv
+        , gEnv :: GEnv
+        , fEnv :: FEnv
+        }
+
+    initialEnv = Env {vEnv = Map.empty, gEnv = Map.empty, fEnv = Map.empty}
     
     data Flag = FReturn | FBreak | FContinue | FNothing
 
@@ -38,7 +45,7 @@
       show OutOfBound = "Index out of bound"
 
     --my monad
-    type MM = ReaderT (VEnv, GEnv, FEnv) (StateT Store (ExceptT MyException IO))
+    type MM = ReaderT Env (StateT Store (ExceptT MyException IO))
 
     --Iga: data Type = Int | Str | Bool | Void | Arr Type
     --Iga: co z arr i void?
