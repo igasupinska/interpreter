@@ -19,9 +19,12 @@
 
     --variable environment
     type VEnv = Map Ident Loc
+
+    --global variable environment
+    type GEnv = Map Ident Loc
     
     --function environment
-    type FEnv = Map Ident (TopDef, VEnv)
+    type FEnv = Map Ident TopDef
 
     type Env = (VEnv, FEnv)
     
@@ -35,7 +38,7 @@
       show OutOfBound = "Index out of bound"
 
     --my monad
-    type MM = ReaderT (VEnv, FEnv) (StateT Store (ExceptT MyException IO))
+    type MM = ReaderT (VEnv, GEnv, FEnv) (StateT Store (ExceptT MyException IO))
 
     --Iga: data Type = Int | Str | Bool | Void | Arr Type
     --Iga: co z arr i void?
