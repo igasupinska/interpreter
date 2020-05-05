@@ -25,7 +25,7 @@ module TypeChecker where
     type FEnvT = Map Ident FnDefT
 
     --list of venv makes for block visible venv, the most nested one first
-    type EnvT = ([VEnvT], FEnvT)
+    type EnvT = ([VEnvT], VEnvT, FEnvT)
 
     --keeps type of argument and info whether its reference or not
     --(typ, isRef)
@@ -33,7 +33,11 @@ module TypeChecker where
 
 
     lookupVar :: Ident -> [VEnvT] -> TM (Type)
-    lookupVar (Ident ident) [] = throwError ("Variable " ++ ident ++ " not declared.")
+    lookupVar id@(Ident ident) [] = do
+        (_, gvenv, _) <- ask
+        if member id gvenv
+            then return $ gvenv ! id
+            else throwError ("Variable " ++ ident ++ " not declared.")
 
     lookupVar ident (e:es) = do
         if member ident e
@@ -42,23 +46,32 @@ module TypeChecker where
 
     insertVar :: Ident -> Type -> TM ([VEnvT])
     insertVar id@(Ident ident) typ = do
-        ((v:vs), _) <- ask
+        ((v:vs), _, _) <- ask
         if member id v
             then throwError ("Variable " ++ ident ++ " already declared.")
             else do
                 let v' = insert id typ v
                 return $ (v':vs)
 
+    insertGlobalVar :: Ident -> Type -> TM(VEnvT)
+    insertGlobalVar id@(Ident ident) typ = do
+        (_, gvenv, _) <- ask
+        if member id gvenv
+            then throwError ("Global variable " ++ ident ++ " already declared.")
+            else do
+                let gvenv' = insert id typ gvenv
+                return gvenv'
+
     lookupFun :: Ident -> TM (FnDefT)
     lookupFun id@(Ident ident) = do
-        (venv, fenv) <- ask
+        (_, _, fenv) <- ask
         if member id fenv
             then return $ fenv ! id
             else throwError ("Function " ++ ident ++ " not defined.")
 
     insertFun :: Ident -> FnDefT -> TM (FEnvT)
     insertFun id@(Ident ident) def = do
-        (_, fenv) <- ask
+        (_, _, fenv) <- ask
         if member id fenv
             then throwError ("Function " ++ ident ++ " already defined.")
             else do
@@ -88,7 +101,7 @@ module TypeChecker where
     checkExpr :: Expr -> TM (Type)
 
     checkExpr (EVar ident) = do
-        (env, fenv) <- ask
+        (env, gvenv, fenv) <- ask
         lookupVar ident env
     
     checkExpr (ELitInt _) = return Int
@@ -144,7 +157,7 @@ module TypeChecker where
     --array expr
     checkExpr (ArrAcc a e) = do
         correctType Int e
-        (venv, fenv) <- ask
+        (venv, gvenv, fenv) <- ask
         t <- lookupVar a venv
         case t of
             Arr x -> return x
@@ -193,22 +206,22 @@ module TypeChecker where
     checkStmtBlockHelper :: Block -> TM ()
     checkStmtBlockHelper (Block []) = return ()
     checkStmtBlockHelper (Block (b:bs)) = do
-        (venv, fenv) <- checkStmt b
+        (venv, gvenv, fenv) <- checkStmt b
         -- return ()
-        local (\_ -> (venv, fenv)) (checkStmtBlockHelper (Block bs))
+        local (\_ -> (venv, gvenv, fenv)) (checkStmtBlockHelper (Block bs))
 
     checkStmt :: Stmt -> TM (EnvT)
     
     --Iga: tu tak naprawdę trzeba wejść do wnętrza bloku i przepatrzeć
     checkStmt (BStmt (Block b)) = do
-        (venv, fenv) <- ask
-        local (\_ -> (Map.empty:venv, fenv)) (checkStmtBlockHelper (Block b))
-        return (venv, fenv)
+        (venv, gvenv, fenv) <- ask
+        local (\_ -> (Map.empty:venv, gvenv, fenv)) (checkStmtBlockHelper (Block b))
+        return (venv, gvenv, fenv)
 
     checkStmt (Decl t (NoInit ident)) = do
-        (venv, fenv) <- ask
+        (venv, gvenv, fenv) <- ask
         venv' <- insertVar ident t
-        return (venv', fenv)
+        return (venv', gvenv, fenv)
 
     checkStmt (Decl t (Init ident expr)) = do
         correctType t expr
@@ -217,9 +230,9 @@ module TypeChecker where
 
     checkStmt (Decl (Arr t) (ArrNoInit ident expr)) = do
         correctType Int expr
-        (venv, fenv) <- ask
+        (venv, gvenv, fenv) <- ask
         venv' <- insertVar ident (Arr t)
-        return (venv', fenv)
+        return (venv', gvenv, fenv)
         `catchError` \err -> throwError ("Type error: in array size expression. " ++ err)
     
     checkStmt (Decl (Arr t) (ArrInit ident expr l)) = do
@@ -229,20 +242,20 @@ module TypeChecker where
         `catchError` \err -> throwError ("Type error: list initialization. " ++ err)
 
     checkStmt (Ass ident e) = do
-        (venv, fenv) <- ask
+        (venv, gvenv, fenv) <- ask
         t1 <- lookupVar ident venv
         correctType t1 e
-        return (venv, fenv)
+        return (venv, gvenv, fenv)
         `catchError` \err -> throwError ("Type error: in assignment. " ++ err)
     
     checkStmt (ArrAss id@(Ident ident) idx_e e) = do
         correctType Int idx_e
-        (venv, fenv) <- ask
+        (venv, gvenv, fenv) <- ask
         t1 <- lookupVar id venv
         case t1 of
             Arr x -> do
                 correctType x e
-                return (venv, fenv)
+                return (venv, gvenv, fenv)
             _ -> throwError (ident ++ " is not an array.")
         `catchError` \err -> throwError ("Type error: array assignment. " ++ err)
 
@@ -312,9 +325,14 @@ module TypeChecker where
     checkProgram :: Program -> TM ()
     checkProgram (Program []) = return ()
     
-    checkProgram (Program (f:fs)) = do 
-                    env <- checkFunction f
-                    local (\_ -> env) (checkProgram (Program fs))
+    checkProgram (Program (f:fs)) = do
+                    case f of
+                        (FnDef _ _ _ _) -> do
+                                env <- checkFunction f
+                                local (\_ -> env) (checkProgram (Program fs))
+                        (GlobalVar t i) -> do
+                                env <- checkGlobal f
+                                local (\_ -> env) (checkProgram (Program fs))
 
     --make list of types of arguments
     prepArgTypes :: [ArgOrRef] -> [ArgType]
@@ -328,15 +346,32 @@ module TypeChecker where
         let venv' = insert ident t env in
             addArgsToEnv args venv'
 
+    checkGlobal :: TopDef -> TM (EnvT)
+    checkGlobal (GlobalVar typ item) = do
+        (venv, gvenv, fenv) <- ask
+        case item of
+            (NoInit id@(Ident ident)) -> do
+                gvenv' <- insertGlobalVar id typ
+                return (venv, gvenv', fenv)
+            (Init id@(Ident ident) _) -> do
+                gvenv' <- insertGlobalVar id typ
+                return (venv, gvenv', fenv)
+            (ArrNoInit id@(Ident ident) _) -> do
+                gvenv' <- insertGlobalVar id (Arr typ)
+                return (venv, gvenv', fenv)
+            (ArrInit id@(Ident ident) _ _) -> do
+                gvenv' <- insertGlobalVar id (Arr typ)
+                return (venv, gvenv', fenv)
+
     checkFunction :: TopDef -> TM (EnvT)
 
     checkFunction (FnDef typ ident args block) = do
-        (venv, fenv) <- ask
+        (venv, gvenv, fenv) <- ask
         let argTypes = prepArgTypes args
         let venv' = addArgsToEnv argTypes Map.empty
         fenv' <- insertFun ident (typ, argTypes, venv)
-        local (\_ -> ((venv':venv), fenv')) (checkStmtBlockHelper block)
-        return $ (venv, fenv')
+        local (\_ -> ((venv':venv), gvenv, fenv')) (checkStmtBlockHelper block)
+        return $ (venv, gvenv, fenv')
      
 
-    checkProg prog = runExceptT $ runReaderT (checkProgram prog) ([], Map.empty)
+    checkProg prog = runExceptT $ runReaderT (checkProgram prog) ([], Map.empty, Map.empty)

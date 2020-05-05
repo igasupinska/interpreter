@@ -4,6 +4,8 @@ entrypoints Program ;
 
 Program.   Program ::= [TopDef] ;
 
+GlobalVar. TopDef ::= "global" Type Item ";" ;
+
 FnDef.     TopDef ::= Type Ident "(" [ArgOrRef] ")" Block ;
 
 separator nonempty TopDef "" ;

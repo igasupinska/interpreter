@@ -1,0 +1,7 @@
+global int a = 5;
+
+int main() {
+	
+	print(a);
+	return 0;
+}
