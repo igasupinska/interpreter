@@ -333,7 +333,9 @@ module TypeChecker where
     checkStmt (Print e) = do
         env <- ask
         t <- checkExpr e
-        return (env, Nothing)
+        if isArray t || t == Void
+            then throwError ("Print: " ++ show t)
+            else return (env, Nothing)
 
     checkStmt (SExp e) = do
         env <- ask
@@ -406,7 +408,10 @@ module TypeChecker where
                 if t == typ
                     then return env {fEnvT = fenv'}
                     else throwError ("Wrong type of return. Expecting " ++ show typ ++ " but got " ++ show t)
-            Nothing -> throwError ("No return statement.")
+            Nothing -> do
+                if typ == Void
+                    then return env {fEnvT = fenv'}
+                    else throwError ("No return statement in non-void function.")
         `catchError` \err -> throwError ("Type error in function " ++ ident ++ ". " ++ err)
 
     checkProg prog = runExceptT $ runReaderT (checkProgram prog) initialEnvT

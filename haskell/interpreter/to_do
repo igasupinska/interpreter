@@ -16,9 +16,12 @@
 
 TypeChecker
 - czy funkcja przypadkiem nie dostaje pustego środowiska, bo nie widzi nic?
+
 - zrobić catchowanie błędów, żeby budować sensowne komunikaty
-- dodać sprawdzanie wyniku funkcji
+
+- dodać sprawdzanie wyniku funkcji (50/50)
 
 kompilacja:
 bnfc -m gramm.cf
 make
+ghc --make Main.hs -o interpreter
