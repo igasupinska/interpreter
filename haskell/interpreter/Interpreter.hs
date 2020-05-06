@@ -39,7 +39,7 @@ module Interpreter where
                     then throwError DivZero
                     else return $ SInt $ i1 `div` i2 
             Mod -> if i2 == 0
-                    then throwError DivZero --Iga: może dodać ModZero
+                    then throwError ModZero
                     else return $ SInt $ i1 `mod` i2 
 
     evalExpr (EAdd e1 op e2) = do
@@ -84,15 +84,19 @@ module Interpreter where
             False -> evalExpr e2
 
     --array expr
+    --Iga: tu brzydki długi if-else
     evalExpr (ArrAcc a e) = do
         loc <- lookupVar a
         SInt size <- gets (lookupStore loc)
         SInt idx <- evalExpr e
-        if idx < size
-            then do
-                val <- gets(lookupStore (loc + 1 + idx)) -- Iga: ok
-                return val
-            else throwError OutOfBound
+        if idx > size
+            then throwError OutOfBound
+            else
+                if idx < 0
+                    then throwError NegIndex
+                    else do
+                        val <- gets(lookupStore (loc + 1 + idx)) -- Iga: ok
+                        return val
 
     --function expr
 
@@ -121,63 +125,21 @@ module Interpreter where
         let venv' = insertVar a loc (vEnv env)
         local (\_ -> env {vEnv = venv'}) (mapArgs fArgs rArgs)
 
-
-    -- execStmt (Decl t (ArrInit ident expr initList)) = do
-    --     (s, loc) <- get
-    --     modify (getNewLoc)
-    --     (venv, gvenv, fenv) <- ask
-    --     SInt size <- evalExpr expr
-    --     modify (insertStore loc (SInt size))
-    --     storeArray size initList
-    --     return (insertVar ident loc venv, gvenv, fenv, Nothing, FNothing)
-
-    -- mapArgs (Arg (Arr typ) a:fArgs) (EExpArg b:rArgs) = do
-    --     initList <- listFromArr b typ
-    --     (s, loc) <- get 
-    --     (venv, gvenv, fenv, _, _) <- execStmt (Decl typ (ArrInit a (ELitInt $ toInteger (length initList)) initList))
-    --     let venv' = insertVar a loc venv
-    --     local (\_ -> (venv', gvenv, fenv)) (mapArgs fArgs rArgs)
-
     mapArgs (Arg typ a:fArgs) (EExpArg b:rArgs) = do
-        (s, loc) <- get
-        modify (getNewLoc)
         env <- ask
-        let venv' = insertVar a loc (vEnv env)
-        val <- evalExpr b
-        loc <- local (\_ -> env {vEnv = venv'}) (lookupVar a)
-        modify (insertStore loc val)
-        local (\_ -> env {vEnv = venv'}) (mapArgs fArgs rArgs)
-
-
-    listFromArr :: Expr -> Type -> MM([Expr])
-    listFromArr (EVar ident) t = do
-        loc <- lookupVar ident
-        SInt size <- gets (lookupStore loc)
-        newArr <- getArr t (loc + 1) size
-        return newArr
-
-    getArr :: Type -> Loc -> Integer -> MM([Expr])
-    getArr t l 0 = return []
-
-    getArr t l s = do
-        el <- gets (lookupStore l)
-        rest <- getArr t (l+1) (s-1)
-        case el of
-            SInt x -> return $ (ELitInt x):rest
-            SBool False -> return $ (ELitFalse):rest
-            SBool True -> return $ (ELitTrue):rest
-            SStr x -> return $ (EString x):rest
-
-
-    storeArray :: Integer -> [Expr] -> MM()
-    storeArray 0 val = return ()
-
-    storeArray size (v:vs) = do
-        (s, loc) <- get
-        modify (getNewLoc)
-        val <- evalExpr v
-        modify (insertStore loc val)
-        storeArray (size-1) vs
+        if isArray typ
+            then do
+                loc <- copyArray b a
+                let venv' = insertVar a loc (vEnv env)
+                local (\_ -> env {vEnv = venv'}) (mapArgs fArgs rArgs)
+            else do 
+                (s, loc) <- get
+                modify (getNewLoc)
+                let venv' = insertVar a loc (vEnv env)
+                val <- evalExpr b
+                loc <- local (\_ -> env {vEnv = venv'}) (lookupVar a)
+                modify (insertStore loc val)
+                local (\_ -> env {vEnv = venv'}) (mapArgs fArgs rArgs)
 
 --------------------------------------------------
 ------------------ STATEMENTS --------------------
@@ -215,25 +177,23 @@ module Interpreter where
         return (env {vEnv = venv'}, Nothing, FNothing)
 
     execStmt (Decl t (ArrNoInit ident expr)) = do
-        (s, loc) <- get
-        modify (getNewLoc)
-        env <- ask
         SInt size <- evalExpr expr
-        modify (insertStore loc (SInt size))
-        val <- evalExpr $ getDefaultExpr t
-        () <- storeArray size (replicate (fromInteger size) (ELitInt 0)) --Iga: tu poprawić
-        let venv' = insertVar ident loc (vEnv env)
-        return (env {vEnv = venv'}, Nothing, FNothing)
+        let initList = replicate (fromInteger size) (getDefaultExpr t)
+        execStmt (Decl t (ArrInit ident expr initList))
 
     execStmt (Decl t (ArrInit ident expr initList)) = do
         (s, loc) <- get
         modify (getNewLoc)
         env <- ask
         SInt size <- evalExpr expr
-        modify (insertStore loc (SInt size))
-        storeArray size initList
-        let venv' = insertVar ident loc (vEnv env)
-        return (env {vEnv = venv'}, Nothing, FNothing)
+        if size < 0
+            then throwError InvalidSize
+            else do
+                modify (insertStore loc (SInt size))
+                list <- mapM evalExpr initList
+                storeArray size list
+                let venv' = insertVar ident loc (vEnv env)
+                return (env {vEnv = venv'}, Nothing, FNothing)
 
     execStmt (Ass ident e) = do
         val <- evalExpr e

@@ -12,14 +12,12 @@
 - dodać domyślną wartość przy inicjalizacji za krótką listą
 - evalExpr(EApp) -> co zwraca jak funkcja typu void
 
--tablica tablic
-
 TypeChecker
 - czy funkcja przypadkiem nie dostaje pustego środowiska, bo nie widzi nic?
-
 - zrobić catchowanie błędów, żeby budować sensowne komunikaty
 
-- dodać sprawdzanie wyniku funkcji (50/50)
+Gramm:
+- uniemożliwić deklarację tablicy z inicjalizacją zmiennej;
 
 kompilacja:
 bnfc -m gramm.cf

@@ -26,7 +26,6 @@
     --function environment
     type FEnv = Map Ident (TopDef, GEnv)
 
-
     data Env = Env
         { vEnv :: VEnv
         , gEnv :: GEnv
@@ -37,12 +36,15 @@
     
     data Flag = FReturn | FBreak | FContinue | FNothing
 
-    data MyException = DivZero | OutOfBound
+    data MyException = DivZero | ModZero | OutOfBound | NegIndex | InvalidSize
 
     -- Converts MyException to a readable message.
     instance Show MyException where
       show DivZero = "Trying to divide by 0"
+      show ModZero = "Modulo of 0"
       show OutOfBound = "Index out of bound"
+      show NegIndex = "Index negative"
+      show InvalidSize = "Array of invalid size"
 
     --my monad
     type MM = ReaderT Env (StateT Store (ExceptT MyException IO))
