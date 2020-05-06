@@ -1,6 +1,8 @@
 module TypeChecker where
     import AbsGramm
 
+    import Types
+
     import Control.Monad.Reader
     import Control.Monad.State.Lazy
     import Control.Monad.Except
@@ -174,44 +176,45 @@ module TypeChecker where
         correctType Int e
         env <- ask
         t <- lookupVar a (vEnvT env)
-        case t of
-            Arr x -> return x
-            _     -> throwError ("Not an array but " ++ show t)
+        if isArray t
+            then return $ getArrType t
+            else throwError ("Not an array but " ++ show t)
         `catchError` \err -> throwError ("Type error: in array access. " ++ err)
 
     -- --function expr
 
     --Iga:upiekszyc
     --Iga: type FEnvT = Map Ident ([ArgType], [VEnvT])
-    checkExpr (EApp ident rArgs) = do
-        (ret, fArgs, env) <- lookupFun ident
+    checkExpr (EApp id@(Ident ident) rArgs) = do
+        (ret, fArgs, env) <- lookupFun id
         validateArgs rArgs fArgs
         return ret
+        `catchError` \err -> throwError ("In function " ++ ident ++ ": " ++ err)
 
     --Iga:upiekszyc
     --check if formal argument type is the same as actual one
     validateArgs :: [ExprOrRef] -> [ArgType] -> TM ()
     validateArgs [] [] = return ()
-    validateArgs [] fArgs = throwError ("Number of arguments doesn't match")
-    validateArgs rArgs [] = throwError ("Number of arguments doesn't match")
+    validateArgs [] fArgs = throwError ("number of arguments doesn't match.")
+    validateArgs rArgs [] = throwError ("number of arguments doesn't match.")
     validateArgs (ERefArg r:rs) (f:fs) = do
         if (isRef f)
             then do
                 t' <- checkExpr (EVar r)
                 if t' /= (typ f)
-                    then throwError ("Argument types don't match")
+                    then throwError ("argument types don't match.")
                     else validateArgs rs fs
-            else throwError ("Expected expression arg but got reference")
+            else throwError ("expected expression arg but got reference.")
 
 
     --Iga:upiekszyc
     validateArgs (EExpArg r:rs) (f:fs) = do
         if (isRef f)
-            then throwError("Expected reference but got expression argument")
+            then throwError("expected reference but got expression argument.")
             else do
                 t' <- checkExpr r
                 if t' /= (typ f)
-                    then throwError ("Argument types don't match")
+                    then throwError ("argument types don't match.")
                     else validateArgs rs fs
 
 
@@ -229,8 +232,9 @@ module TypeChecker where
         (env, r) <- checkStmt b
         local (\_ -> env) (checkStmtBlockHelper (Block bs) (r:ret))
 
+
     checkStmt :: Stmt -> TM (EnvT, Maybe Type)
-    
+
     --Iga: tu tak naprawdę trzeba wejść do wnętrza bloku i przepatrzeć
     checkStmt (BStmt (Block b)) = do
         env <- ask
@@ -247,16 +251,16 @@ module TypeChecker where
         checkStmt (Decl t (NoInit ident))
         `catchError` \err -> throwError ("Type error: variable declaration. " ++ err)
 
-    checkStmt (Decl (Arr t) (ArrNoInit ident expr)) = do
+    checkStmt (Decl t (ArrNoInit ident expr)) = do
         correctType Int expr
         env <- ask
-        venv' <- insertVar ident (Arr t)
+        venv' <- insertVar ident t
         return (env {vEnvT = venv'}, Nothing)
         `catchError` \err -> throwError ("Type error: in array size expression. " ++ err)
     
-    checkStmt (Decl (Arr t) (ArrInit ident expr l)) = do
-        (env, _) <- checkStmt (Decl (Arr t) (ArrNoInit ident expr))
-        correctTypes t l
+    checkStmt (Decl t (ArrInit ident expr l)) = do
+        (env, _) <- checkStmt (Decl t (ArrNoInit ident expr))
+        correctTypes (getArrType t) l
         return (env, Nothing)
         `catchError` \err -> throwError ("Type error: list initialization. " ++ err)
 
@@ -271,11 +275,11 @@ module TypeChecker where
         correctType Int idx_e
         env <- ask
         t1 <- lookupVar id (vEnvT env)
-        case t1 of
-            Arr x -> do
-                correctType x e
+        if isArray t1
+            then do
+                correctType (getArrType t1) e
                 return (env, Nothing)
-            _ -> throwError (ident ++ " is not an array.")
+            else throwError (ident ++ " is not an array.")
         `catchError` \err -> throwError ("Type error: array assignment. " ++ err)
 
     checkStmt (Ret e) = do
@@ -383,10 +387,10 @@ module TypeChecker where
                 gvenv' <- insertGlobalVar id typ
                 return env {gEnvT = gvenv'}
             (ArrNoInit id@(Ident ident) _) -> do
-                gvenv' <- insertGlobalVar id (Arr typ)
+                gvenv' <- insertGlobalVar id typ
                 return env {gEnvT = gvenv'}
             (ArrInit id@(Ident ident) _ _) -> do
-                gvenv' <- insertGlobalVar id (Arr typ)
+                gvenv' <- insertGlobalVar id typ
                 return env {gEnvT = gvenv'}
 
     checkFunction :: TopDef -> TM (EnvT)

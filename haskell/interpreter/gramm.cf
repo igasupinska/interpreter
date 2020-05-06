@@ -70,9 +70,11 @@ Bool.      Type ::= "bool" ;
 
 Void.      Type ::= "void" ;
 
-Arr.       Type ::= "array" "<" Type ">" ;
+ArrInt.    Type ::= "array" "<int>" ;
 
-separator  Type "," ;
+ArrStr.    Type ::= "array" "<string>" ;
+
+ArrBool.   Type ::= "array" "<bool>" ;
 
 -- Expressions ---------------------------------------------
 

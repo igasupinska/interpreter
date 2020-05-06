@@ -53,4 +53,16 @@
     getDefaultExpr Int = ELitInt 0
     getDefaultExpr Str = EString []
     getDefaultExpr Bool = ELitFalse
-    getDefaultExpr (Arr t) = getDefaultExpr t
+    getDefaultExpr arr = getDefaultExpr $ getArrType arr
+
+
+    isArray :: Type -> Bool
+    isArray ArrInt = True
+    isArray ArrStr = True
+    isArray ArrBool = True
+    isArray a = False
+
+    getArrType :: Type -> Type
+    getArrType ArrInt = Int
+    getArrType ArrStr = Str
+    getArrType ArrBool = Bool
