@@ -6,9 +6,6 @@
 - return w pętli for
 - podawanie wyrażeń w indeksie tablicy w nawiasie
 
-- poprawić prepArgs -> musi być w wywołaniu funkcji, bo rekurencja
-					-> czy musi być przy wczytywaniu funkcji wtedy?
-
 - dodać domyślną wartość przy inicjalizacji za krótką listą
 - evalExpr(EApp) -> co zwraca jak funkcja typu void
 

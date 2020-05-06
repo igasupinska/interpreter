@@ -10,8 +10,8 @@
     import Prelude hiding (lookup)
     
 
-    data StoredVal = SInt Integer | SStr String | SBool Bool
-    
+    data StoredVal = SInt Integer | SStr String | SBool Bool | SArr (Map Integer StoredVal)
+
     type Loc = Integer
     
     --keeps mappings from location into values and last used location

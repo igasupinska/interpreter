@@ -87,15 +87,15 @@ module Interpreter where
     --Iga: tu brzydki długi if-else
     evalExpr (ArrAcc a e) = do
         loc <- lookupVar a
-        SInt size <- gets (lookupStore loc)
+        SArr array <- gets (lookupStore loc)
         SInt idx <- evalExpr e
-        if idx > size
+        if fromInteger idx > size array
             then throwError OutOfBound
             else
                 if idx < 0
                     then throwError NegIndex
                     else do
-                        val <- gets(lookupStore (loc + 1 + idx)) -- Iga: ok
+                        let val = array ! (fromInteger idx)
                         return val
 
     --function expr
@@ -127,19 +127,13 @@ module Interpreter where
 
     mapArgs (Arg typ a:fArgs) (EExpArg b:rArgs) = do
         env <- ask
-        if isArray typ
-            then do
-                loc <- copyArray b a
-                let venv' = insertVar a loc (vEnv env)
-                local (\_ -> env {vEnv = venv'}) (mapArgs fArgs rArgs)
-            else do 
-                (s, loc) <- get
-                modify (getNewLoc)
-                let venv' = insertVar a loc (vEnv env)
-                val <- evalExpr b
-                loc <- local (\_ -> env {vEnv = venv'}) (lookupVar a)
-                modify (insertStore loc val)
-                local (\_ -> env {vEnv = venv'}) (mapArgs fArgs rArgs)
+        (s, loc) <- get
+        modify (getNewLoc)
+        let venv' = insertVar a loc (vEnv env)
+        val <- evalExpr b
+        loc <- local (\_ -> env {vEnv = venv'}) (lookupVar a)
+        modify (insertStore loc val)
+        local (\_ -> env {vEnv = venv'}) (mapArgs fArgs rArgs)
 
 --------------------------------------------------
 ------------------ STATEMENTS --------------------
@@ -189,9 +183,9 @@ module Interpreter where
         if size < 0
             then throwError InvalidSize
             else do
-                modify (insertStore loc (SInt size))
                 list <- mapM evalExpr initList
-                storeArray size list
+                arr <- storeArray size list
+                modify (insertStore loc arr)
                 let venv' = insertVar ident loc (vEnv env)
                 return (env {vEnv = venv'}, Nothing, FNothing)
 
@@ -207,11 +201,15 @@ module Interpreter where
         val <- evalExpr e
         env <- ask
         loc <- lookupVar ident
-        SInt size <- gets (lookupStore loc)
-        if idx < size
+        SArr array <- gets (lookupStore loc)
+        if fromInteger idx < size array
         then do
-            modify (insertStore (loc + 1 + idx) val)
-            return (env, Nothing, FNothing)
+            if idx < 0
+                then throwError NegIndex
+                else do
+                    let newArr = insert idx val array
+                    modify (insertStore loc (SArr newArr))
+                    return (env, Nothing, FNothing)
         else throwError OutOfBound
 
     execStmt (Ret e) = do
