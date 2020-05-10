@@ -1,0 +1,15 @@
+int multiply(int a, int b) {
+	int c = a * b;
+	if (c > 0) {
+		int k;
+	} else {
+		return 4;
+	}
+	return "7";
+}
+
+
+int main() {
+	
+	return 0;
+}

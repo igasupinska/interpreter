@@ -2,8 +2,6 @@
  	--> poprawić shift/reduce conflict
  	ArrAss.    Stmt ::= Ident "{" Expr "}" "=" Expr ;
 - dostęp do elementu tablicy w różnych środowiskach (?)
-- return musi wychodzić z funkcji
-- return w pętli for
 - podawanie wyrażeń w indeksie tablicy w nawiasie
 
 - dodać domyślną wartość przy inicjalizacji za krótką listą
@@ -17,6 +15,6 @@ Gramm:
 - uniemożliwić deklarację tablicy z inicjalizacją zmiennej;
 
 kompilacja:
-bnfc -m gramm.cf
+bnfc -m gramm.cf --functor
 make
 ghc --make Main.hs -o interpreter

@@ -1,0 +1,9 @@
+int inna_funkcja(int a) {
+	return (2*a);
+}
+
+int main() {
+	int x = 7;
+	int y = funkcja(x);	
+	return 0;
+}

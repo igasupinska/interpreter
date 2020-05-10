@@ -1,0 +1,9 @@
+int square(int x) {
+	return (x*x);
+}
+
+int main() {
+	y = square(23);
+
+	return 0;
+}

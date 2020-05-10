@@ -7,7 +7,5 @@ int main() {
 		int i = 23; //error
 	}
 
-	int i = 20; //error
-
 	return 0;
 }
