@@ -8,7 +8,6 @@
     import Data.Map as Map
     import Data.Maybe
     import Prelude hiding (lookup)
-    
 
     data StoredVal = SInt Integer
                     | SStr String
@@ -18,8 +17,9 @@
 
     type Loc = Integer
     
-    --keeps mappings from location into values and last used location
+    --mappings from location into values and first free location
     type Store = (Map Loc StoredVal, Loc)
+    
     initialStore = (Map.empty, 0)
 
     --variable environment
@@ -54,8 +54,6 @@
     --my monad
     type MM = ReaderT Env (StateT Store (ExceptT MyException IO))
 
-    --Iga: data Type = Int | Str | Bool | Void | Arr Type
-    --Iga: co z arr i void?
     getDefaultExpr :: Type -> Expr
     getDefaultExpr Int = ELitInt 0
     getDefaultExpr Str = EString []
