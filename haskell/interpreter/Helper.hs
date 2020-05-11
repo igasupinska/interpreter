@@ -45,7 +45,27 @@ module Helper where
     insertStore :: Loc -> StoredVal -> Store -> Store
     insertStore loc val (store, lastLoc) = (insert loc val store, lastLoc)
 
+    declGlobalVar :: Ident -> StoredVal -> MM (Env)    
+    declGlobalVar ident val = do
+        gvenv' <- insertGlobalVar ident
+        env <- ask
+        loc <- local (\_ -> env {gEnv = gvenv'}) (lookupVar ident)
+        modify (insertStore loc val)
+        return env {gEnv = gvenv'}
 
+    declGlobalArr :: Ident -> Integer -> [StoredVal] -> MM (Env)
+    declGlobalArr ident size initList = do
+        (s, loc) <- get
+        modify (getNewLoc)
+        env <- ask
+        if size < 0
+            then throwError InvalidSize
+            else do
+                arr <- storeArray size initList
+                modify (insertStore loc arr)
+                let gvenv' = insertVar ident loc (gEnv env)
+                return env {gEnv = gvenv'}
+    
     storeArray :: Integer -> [StoredVal] -> MM (StoredVal)
     storeArray size vals = do
         let idx = [0..size]

@@ -1,3 +1,6 @@
+-- based on Main module generated automatically
+-- by BNF converter as an example
+
 import AbsGramm
 import LexGramm
 import ParGramm
@@ -7,70 +10,40 @@ import TypeChecker
 import Interpreter
 import Types
 
-import System.IO (stdin, hGetContents, hPutStrLn, stderr, getContents, hPutStr)
-import System.Environment (getArgs, getProgName)
+import System.IO (hPutStrLn, stderr)
+import System.Environment (getArgs)
 import System.Exit (exitFailure, exitSuccess)
-import Control.Exception (catch, IOException)
 import Control.Monad.IO.Class
 
-printResult :: (StoredVal, Store) -> String
-printResult ((SInt res), store) = show res 
-printResult ((SBool res), store) = show res 
-printResult ((SStr res), store) = show res
 
-main :: IO () --Iga: skopiowane
+main :: IO ()
 main = do
     args <- getArgs
     case args of
-        [] -> getContents >>= parse
-        files -> mapM_ parseFile files
+        [] -> putStrLn "No file to parse...\n"
+        [file] -> parseFile file
+        files -> putStrLn "Too many files to parse...\n"
 
-parseFile :: String -> IO () --Iga: skopiowane
+parseFile :: String -> IO ()
 parseFile fileName = readFile fileName >>= parse
 
-parse :: String -> IO () --Iga: skopiowane
+parse :: String -> IO ()
 parse input = let src = myLexer input in
         case pProgram src of
             Bad c ->  do
-                        putStrLn "Parse Failed...\n"
-                        exitFailure
+                putStrLn "Parse Failed...\n"
+                exitFailure
             Ok c  ->  do
                 checkRes <- checkProg c
                 case checkRes of
                     Left err -> do
-                        putStrLn $ show err
+                        hPutStrLn stderr (show err)
                         exitFailure
                     Right () -> do
                         res <- runProg c
                         case res of
                             Left err -> do
-                                putStrLn $ show err
+                                hPutStrLn stderr (show err)
                                 exitFailure
                             Right (val, store) -> do
-                                putStrLn $ printResult (val, store)
                                 exitSuccess
-
-
--- main :: IO ()
--- main = do
---   args <- getArgs
---   case args of
---     ["--help"] -> usage
---     [] -> hGetContents stdin >>= run 2 pProgram
---     "-s":fs -> mapM_ (runFile 0 pProgram) fs
---     fs -> mapM_ (runFile 2 pProgram) fs
-
--- runFile :: (Print a, Show a) => Verbosity -> ParseFun a -> FilePath -> IO ()
--- runFile v p f = putStrLn f >> readFile f >>= run v p
-
--- run :: (Print a, Show a) => Verbosity -> ParseFun a -> String -> IO ()
--- run v p s = let ts = myLLexer s in case p ts of
---            Bad s    -> do putStrLn "\nParse              Failed...\n"
---                           putStrV v "Tokens:"
---                           putStrV v $ show ts
---                           putStrLn s
---                           exitFailure
---            Ok  tree -> do putStrLn "\nParse Successful!"
---                           showTree v tree
-
---                           exitSuccess

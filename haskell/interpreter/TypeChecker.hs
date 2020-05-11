@@ -29,7 +29,7 @@ module TypeChecker where
     --function types environment
     type FEnvT = Map Ident FnDefT
 
-    --list of venv makes for block visible venv, the most nested one first
+    -- list of venv makes for block visible venv, the most nested one first
     -- type EnvT = ([VEnvT], VEnvT, FEnvT)
 
     data EnvT = EnvT
@@ -320,7 +320,6 @@ module TypeChecker where
 
     checkStmt (For v start end (Block b)) = do
         env <- ask
-        --Iga:sprawdzić, że zmienna v jest typu int
         correctType Int start
         correctType Int end
         correctType Int (EVar v)

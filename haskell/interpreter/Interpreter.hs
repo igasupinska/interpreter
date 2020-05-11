@@ -4,7 +4,6 @@ module Interpreter where
     import Control.Monad.Reader
     import Control.Monad.State.Lazy
     import Control.Monad.Except
-    import Control.Exception
     import Data.Map as Map
     import Data.Maybe
     import Prelude hiding (lookup)
@@ -93,8 +92,6 @@ module Interpreter where
 
 
     --function expr
-
-    --Iga: data TopDef = FnDef Type Ident [ArgOrRef] Block
     evalExpr (EApp fun rArgs) = do
         env <- ask
         let ((FnDef typ ident fArgs funBody), gvenv') = lookupFun fun (fEnv env)
@@ -102,7 +99,7 @@ module Interpreter where
         (_, val, flag) <- local (\_ -> env {vEnv = venv', gEnv = gvenv'}) (execStmt $ BStmt funBody)
         case val of
             Just i -> return i
-            Nothing -> return $ SInt 0 --Iga: tu poprawić
+            Nothing -> return SNothing
 
 
     mapArgs :: [ArgOrRef] -> [ExprOrRef] -> MM (VEnv)
@@ -129,7 +126,7 @@ module Interpreter where
 --------------------------------------------------
 ------------------ STATEMENTS --------------------
 --------------------------------------------------
-   --Iga: tu się będzie powtarzać
+
     execStmtHelper (BStmt (Block [])) = do
         env <- ask
         return (env, Nothing, FNothing)
@@ -174,8 +171,8 @@ module Interpreter where
         if size < 0
             then throwError InvalidSize
             else do
-                let initList' = initList ++ (replicate ((fromInteger size) - (length initList)) (getDefaultExpr t))
-                list <- mapM evalExpr initList'
+                let rest = replicate ((fromInteger size) - (length initList)) (getDefaultExpr t)
+                list <- mapM evalExpr (initList ++ rest)
                 arr <- storeArray size list
                 modify (insertStore loc arr)
                 let venv' = insertVar ident loc (vEnv env)
@@ -278,59 +275,35 @@ module Interpreter where
     interpret (Program (f:fs)) = do 
                     env <- interpretTopDef f
                     local (\_ -> env) (interpret (Program fs))
-
+                    
     interpretTopDef :: TopDef -> MM (Env)
     interpretTopDef (GlobalVar typ item) = do
         env <- ask
         case item of
-            (NoInit ident) -> do
-                gvenv' <- insertGlobalVar ident
-                return env {gEnv = gvenv'}
-            (Init ident e) -> do
+            Init ident e -> do
                 val <- evalExpr e
-                gvenv' <- insertGlobalVar ident
-                env <- ask
-                loc <- local (\_ -> env {gEnv = gvenv'}) (lookupVar ident)
-                modify (insertStore loc val)
-                return env {gEnv = gvenv'}
-
-            (ArrNoInit ident e) -> do
+                declGlobalVar ident val
+            
+            NoInit ident -> do
+                val <- evalExpr $ getDefaultExpr typ
+                declGlobalVar ident val
+            
+            ArrInit ident e initList -> do
+                SInt size <- evalExpr e
+                list <- mapM evalExpr initList
+                declGlobalArr ident size list
+            
+            ArrNoInit ident e -> do
                 SInt size <- evalExpr e
                 let initList = replicate (fromInteger size) (getDefaultExpr typ)
-                (s, loc) <- get
-                modify (getNewLoc)
-                env <- ask
-                if size < 0
-                    then throwError InvalidSize
-                    else do
-                        list <- mapM evalExpr initList
-                        arr <- storeArray size list
-                        modify (insertStore loc arr)
-                        let gvenv' = insertVar ident loc (gEnv env)
-                        return env {gEnv = gvenv'}
-
-            (ArrInit ident e initList) -> do
-                SInt size <- evalExpr e
-                (s, loc) <- get
-                modify (getNewLoc)
-                env <- ask
-                if size < 0
-                    then throwError InvalidSize
-                    else do
-                        list <- mapM evalExpr initList
-                        arr <- storeArray size list
-                        modify (insertStore loc arr)
-                        let gvenv' = insertVar ident loc (gEnv env)
-                        return env {gEnv = gvenv'}
-
+                list <- mapM evalExpr initList
+                declGlobalArr ident size list
+            
 
     interpretTopDef (FnDef typ ident args block) = do
         env <- ask
         let fenv = insertFun ident ((FnDef typ ident args block), (gEnv env)) (fEnv env)
         return $ env {fEnv = fenv}
 
-    
-    runProg prog = runExceptT $ runStateT (runReaderT (interpret prog) initialEnv) (Map.empty, 0) --Iga: skopiowane
 
-
-
+    runProg prog = runExceptT $ runStateT (runReaderT (interpret prog) initialEnv) initialStore

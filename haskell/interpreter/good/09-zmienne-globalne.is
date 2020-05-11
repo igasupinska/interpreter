@@ -1,4 +1,4 @@
-global int a = 5;
+global int a;
 
 int main() {
 	{
@@ -6,7 +6,7 @@ int main() {
 		print(a); //local, 13
 	}
 
-	print(a); //global, 5
+	print(a); //global, 0
 
 	return 0;
 }

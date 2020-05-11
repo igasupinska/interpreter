@@ -10,12 +10,17 @@
     import Prelude hiding (lookup)
     
 
-    data StoredVal = SInt Integer | SStr String | SBool Bool | SArr (Map Integer StoredVal)
+    data StoredVal = SInt Integer
+                    | SStr String
+                    | SBool Bool
+                    | SArr (Map Integer StoredVal)
+                    | SNothing
 
     type Loc = Integer
     
     --keeps mappings from location into values and last used location
     type Store = (Map Loc StoredVal, Loc)
+    initialStore = (Map.empty, 0)
 
     --variable environment
     type VEnv = Map Ident Loc
