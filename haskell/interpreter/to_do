@@ -4,12 +4,12 @@
 - dostęp do elementu tablicy w różnych środowiskach (?)
 - podawanie wyrażeń w indeksie tablicy w nawiasie
 
-- dodać domyślną wartość przy inicjalizacji za krótką listą
 - evalExpr(EApp) -> co zwraca jak funkcja typu void
 
 TypeChecker
 - czy funkcja przypadkiem nie dostaje pustego środowiska, bo nie widzi nic?
 - zrobić catchowanie błędów, żeby budować sensowne komunikaty
+- sprawdzać, czy main typu int i bez argumentów
 
 Gramm:
 - uniemożliwić deklarację tablicy z inicjalizacją zmiennej;

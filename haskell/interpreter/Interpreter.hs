@@ -97,11 +97,8 @@ module Interpreter where
     --Iga: data TopDef = FnDef Type Ident [ArgOrRef] Block
     evalExpr (EApp fun rArgs) = do
         env <- ask
-        
         let ((FnDef typ ident fArgs funBody), gvenv') = lookupFun fun (fEnv env)
-        
         venv' <- local (\_ -> env {gEnv = gvenv'}) (mapArgs fArgs rArgs)
-        
         (_, val, flag) <- local (\_ -> env {vEnv = venv', gEnv = gvenv'}) (execStmt $ BStmt funBody)
         case val of
             Just i -> return i
@@ -177,7 +174,8 @@ module Interpreter where
         if size < 0
             then throwError InvalidSize
             else do
-                list <- mapM evalExpr initList
+                let initList' = initList ++ (replicate ((fromInteger size) - (length initList)) (getDefaultExpr t))
+                list <- mapM evalExpr initList'
                 arr <- storeArray size list
                 modify (insertStore loc arr)
                 let venv' = insertVar ident loc (vEnv env)
@@ -236,14 +234,11 @@ module Interpreter where
                     FContinue -> local(\_ -> env') (execStmt (While e b))
             SBool False -> return (env, Nothing, FNothing)
 
-
-    --Iga: tu dodać przerwanie returnem
     execStmt (For v start end (Block b)) = do
         (env, _, _) <- execStmt (Ass v start)
         let incr = Ass v (EAdd (EVar v) Plus (ELitInt 1)) in
             local(\_ -> env) (execStmt $ While (ERel (EVar v) LTH end) (Block (b ++ [incr])))
 
-    
     execStmt (Print e) = do
         expr <- evalExpr e
         env <- ask

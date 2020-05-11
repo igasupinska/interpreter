@@ -57,7 +57,6 @@
     getDefaultExpr Bool = ELitFalse
     getDefaultExpr arr = getDefaultExpr $ getArrType arr
 
-
     isArray :: Type -> Bool
     isArray ArrInt = True
     isArray ArrStr = True
