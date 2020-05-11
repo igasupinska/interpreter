@@ -355,7 +355,13 @@ module TypeChecker where
 --------------------------------------------------
 
     checkProgram :: Program -> TM ()
-    checkProgram (Program []) = return ()
+    checkProgram (Program []) = do
+        (ret, fArgs, env) <- lookupFun (Ident "main")
+        if ret /= Int
+            then throwError ("Main function must return int")
+            else if length fArgs /= 0
+                then throwError ("Main takes no arguments")
+                else return ()
     
     checkProgram (Program (f:fs)) = do
                     case f of

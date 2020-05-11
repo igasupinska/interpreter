@@ -6,10 +6,6 @@
 TypeChecker
 - czy funkcja przypadkiem nie dostaje pustego środowiska, bo nie widzi nic?
 - zrobić catchowanie błędów, żeby budować sensowne komunikaty
-- sprawdzać, czy main typu int i bez argumentów
-
-Gramm:
-- uniemożliwić deklarację tablicy z inicjalizacją zmiennej;
 
 kompilacja:
 bnfc -m gramm.cf --functor
