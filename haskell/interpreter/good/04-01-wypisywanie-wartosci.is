@@ -1,0 +1,12 @@
+int main() {
+	
+	print("To jest napis.");
+
+	print("A to liczba: ");
+	print(5);
+
+	print("A to bool: ");
+	print(2==3);
+
+	return 0;
+}

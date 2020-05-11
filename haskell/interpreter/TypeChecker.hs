@@ -172,7 +172,7 @@ module TypeChecker where
         `catchError` \err -> throwError ("Type error: in || operation. " ++ err)
 
     --array expr
-    checkExpr (ArrAcc a e) = do
+    checkExpr (ArrAcc (ArrItem a e)) = do
         correctType Int e
         env <- ask
         t <- lookupVar a (vEnvT env)
@@ -271,7 +271,7 @@ module TypeChecker where
         return (env, Nothing)
         `catchError` \err -> throwError ("Type error: in assignment. " ++ err)
     
-    checkStmt (ArrAss id@(Ident ident) idx_e e) = do
+    checkStmt (ArrAss (ArrItem id@(Ident ident) idx_e) e) = do
         correctType Int idx_e
         env <- ask
         t1 <- lookupVar id (vEnvT env)

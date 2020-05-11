@@ -38,7 +38,7 @@ separator nonempty Item "," ;
 
 Ass.       Stmt ::= Ident "=" Expr ";" ;
 
-ArrAss.    Stmt ::= Ident "{" Expr "}" "=" Expr ";" ;
+ArrAss.    Stmt ::= ArrItem "=" Expr ";";
 
 Ret.       Stmt ::= "return" Expr ";" ;
 
@@ -90,7 +90,7 @@ EApp.      Expr6 ::= Ident "(" [ExprOrRef] ")" ;
 
 EString.   Expr6 ::= String ;
 
-ArrAcc.    Expr5 ::= Ident "[" Expr6 "]" ;
+ArrAcc.    Expr5 ::= ArrItem ;
 
 Neg.       Expr5 ::= "-" Expr6 ;
 
@@ -109,6 +109,8 @@ EOr.       Expr ::= Expr1 "||" Expr ;
 coercions  Expr 6 ;
 
 separator  Expr "," ;
+
+ArrItem.   ArrItem ::= Ident "[" Expr6 "]" ;
 
 ERefArg.   ExprOrRef ::= "ref" Ident ;
 

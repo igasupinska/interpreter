@@ -84,7 +84,7 @@ module Interpreter where
             False -> evalExpr e2
 
     --array expr
-    evalExpr (ArrAcc a e) = do
+    evalExpr (ArrAcc (ArrItem a e)) = do
         loc <- lookupVar a
         SArr array <- gets (lookupStore loc)
         SInt idx <- evalExpr e
@@ -188,7 +188,7 @@ module Interpreter where
         modify (insertStore loc val)
         return (env, Nothing, FNothing)
     
-    execStmt (ArrAss ident idx_e e) = do
+    execStmt (ArrAss (ArrItem ident idx_e) e) = do
         SInt idx <- evalExpr idx_e
         val <- evalExpr e
         env <- ask

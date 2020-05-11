@@ -1,6 +1,3 @@
-- dodać przypisanie na element tablicy w gramatyce
- 	--> poprawić shift/reduce conflict
- 	ArrAss.    Stmt ::= Ident "{" Expr "}" "=" Expr ;
 - dostęp do elementu tablicy w różnych środowiskach (?)
 - podawanie wyrażeń w indeksie tablicy w nawiasie
 

@@ -1,0 +1,15 @@
+int fibR(int num) {
+    if (num == 0 || num == 1) {
+        return num;
+    } else {
+        return (fibR(num-1) + fibR(num-2));
+    }
+}
+
+int main() {
+
+    print("Siodma liczba Fibonacciego to: ");
+    print(fibR(7));
+
+    return 0;
+}
