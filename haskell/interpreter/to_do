@@ -2,6 +2,8 @@
 - podawanie wyrażeń w indeksie tablicy w nawiasie
 
 - evalExpr(EApp) -> co zwraca jak funkcja typu void
+- wypisywanie napisów bez cudzysłowów
+- w pętli for wartość end liczona tylko raz, przed wejściem do pętli
 
 TypeChecker
 - czy funkcja przypadkiem nie dostaje pustego środowiska, bo nie widzi nic?

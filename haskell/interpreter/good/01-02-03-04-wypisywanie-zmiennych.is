@@ -1,9 +1,10 @@
 int main() {
 	
-	print("To jest napis.");
+	string txt = "To jest napis.";
+	print(txt);
 
 	print("A to liczba: ");
-	print(5);
+	print(5+2);
 
 	print("A to bool: ");
 	print(2==3);

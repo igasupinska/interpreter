@@ -1,0 +1,19 @@
+void printOddIndexes(array<int> tab, int size) {
+	int i = 0;
+	while (i < size) {
+		if (i % 2 == 0) {
+			i = i+1;
+			continue;
+		}
+
+		print(tab[i]);
+		i = i+1;
+	}
+}
+
+int main() {
+	array<int> tab(5) {0,1,2,3,4};
+	printOddIndexes(tab, 5);
+
+	return 0;
+}

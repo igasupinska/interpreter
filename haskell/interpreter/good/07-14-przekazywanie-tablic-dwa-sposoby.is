@@ -1,0 +1,24 @@
+void printArray(array<string> txt, int size) {
+    int i;
+    for (i from 0 to size) {
+        print(txt[i]);
+    }
+
+    print("");
+
+    txt[0] = "ola"; //local change
+}
+
+void change(ref array<string> napis) {
+    napis[1] = "nie ma";
+}
+
+int main() {
+	array<string> napis(3) {"ala", "ma", "kota"};
+    printArray(napis, 3);
+    
+    change(ref napis);
+    printArray(napis, 3);
+
+    return 0;
+}
