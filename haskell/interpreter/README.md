@@ -1,3 +1,18 @@
+# Opis rozwiązania
+Interpreter opiera się na trzech transformatorach monadach: `ReaderT`, `StateT` oraz `ExceptT`.
+
+`ReaderT` trzyma trzy rodzaje środowiska -- środowisko zmiennych, środowisko zmiennych globalnych oraz środowisko funkcji. Zarówno środowisko zmiennych, jak i środowisko zmiennych globalnych to po prostu mapowania identyfikatorów w odpowiednie lokacje w pamięci. Z kolei środowisko funkcji to mapowanie identyfikatora funkcji w jej definicję oraz środowisko widocznych zmiennych.
+
+`StoreT` operuje na mapowaniach z lokacji w wartości trzymane w pamięci. Warto zaznaczyć, że lokacje nie są nigdy zwalniane.
+
+`ExceptT` w przypadku intrepretera odpowiada za obsługę błędów czasu wykonania.
+
+Jeszcze przed interpretacją następuje faza kontroli typów. Kontroler typów opiera się już tylko na dwóch transformatorach: `ReaderT` oraz `ExceptT`.
+
+## Kompilacja
+Wykonanie polecenia `make` w głównym katalogu buduje program.
+Interpreter uruchamia się poleceniem `./interpreter program`, gdzie program to nazwa pliku z kodem źródłowym do interpretacji.
+
 # Opis języka
 
 ## Struktura programu
@@ -174,28 +189,28 @@ Wyrażenia logiczne obliczane są leniwie. Podczas aplikacji funkcji, parametry 
 
   Na 15 punktów | planowane | I iteracja | II iteracja
 ------------ | ------------- |------------- |------------- 
-  01 (trzy typy) | ++ 
-  02 (literały, arytmetyka, porównania) | ++
-  03 (zmienne, przypisanie) | ++
-  04 (print) | ++
-  05 (while, if) | ++
-  06 (funkcje lub procedury, rekurencja) | ++
-  07 (przez zmienną / przez wartość / in/out) | ++
+  01 (trzy typy) | ++ | ++
+  02 (literały, arytmetyka, porównania) | ++ | ++
+  03 (zmienne, przypisanie) | ++ | ++
+  04 (print) | ++ | ++
+  05 (while, if) | ++ | ++
+  06 (funkcje lub procedury, rekurencja) | ++ | ++
+  07 (przez zmienną / przez wartość / in/out) | ++ | ++
   08 (zmienne read-only i pętla for) | ++
  
   Na 20 punktów | planowane | I iteracja | II iteracja
 ------------ | ------------- |------------- |------------- 
-  09 (przesłanianie i statyczne wiązanie) | ++
-  10 (obsługa błędów wykonania) | ++
-  11 (funkcje zwracające wartość) | ++
+  09 (przesłanianie i statyczne wiązanie) | ++ | ++
+  10 (obsługa błędów wykonania) | ++ | ++
+  11 (funkcje zwracające wartość) | ++ | ++
   
   Na 30 punktów | planowane | I iteracja | II iteracja
 ------------ | ------------- |------------- |------------- 
-  12 (4) (statyczne typowanie) | ++
+  12 (4) (statyczne typowanie) | ++ | ++
   13 (2) (funkcje zagnieżdżone ze statycznym wiązaniem)
-  14 (1) (rekordy/tablice/listy) | ++
+  14 (1) (rekordy/tablice/listy) | ++ | ++
   15 (2) (krotki z przypisaniem)
-  16 (1) (break, continue) | ++
+  16 (1) (break, continue) | ++ | ++
   17 (4) (funkcje wyższego rzędu, anonimowe, domknięcia)
   18 (3) (generatory)
   
