@@ -1,0 +1,20 @@
+global int x = 0;
+
+void g() {
+    print("g: ");
+    print(x);
+}
+
+void f () {
+    int x = 1;
+    print("f:");
+    print(x);
+    g();
+}
+
+int main() {
+    f();
+    print("main:");
+    print(x);
+    return 0;
+}

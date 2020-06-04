@@ -4,7 +4,7 @@ void change(ref array<string> napis) {
     print(napis[2]);
     print("--");
 
-    napis{1} = "nie ma";
+    napis[1] = "nie ma";
 }
 
 int main() {
