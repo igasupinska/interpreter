@@ -290,7 +290,8 @@ module Interpreter where
             
             ArrInit ident e initList -> do
                 SInt size <- evalExpr e
-                list <- mapM evalExpr initList
+                let rest = replicate ((fromInteger size) - (length initList)) (getDefaultExpr typ)
+                list <- mapM evalExpr (initList ++ rest)
                 declGlobalArr ident size list
             
             ArrNoInit ident e -> do
