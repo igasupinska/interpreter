@@ -31,7 +31,7 @@ parse :: String -> IO ()
 parse input = let src = myLexer input in
         case pProgram src of
             Bad c ->  do
-                putStrLn "Parse Failed...\n"
+                putStrLn $ "Parse failed: " ++ c
                 exitFailure
             Ok c  ->  do
                 checkRes <- checkProg c
