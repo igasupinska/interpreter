@@ -95,33 +95,33 @@ module Interpreter where
     evalExpr (EApp fun rArgs) = do
         env <- ask
         let ((FnDef typ ident fArgs funBody), gvenv') = lookupFun fun (fEnv env)
-        venv' <- local (\_ -> env {gEnv = gvenv'}) (mapArgs fArgs rArgs)
+        venv' <- local (\_ -> env {vEnv = Map.empty, gEnv = gvenv'}) (mapArgs (vEnv env)fArgs rArgs)
         (_, val, flag) <- local (\_ -> env {vEnv = venv', gEnv = gvenv'}) (execStmt $ BStmt funBody)
         case val of
             Just i -> return i
             Nothing -> return SNothing
 
 
-    mapArgs :: [ArgOrRef] -> [ExprOrRef] -> MM (VEnv)
-    mapArgs [] [] = do
+    mapArgs :: VEnv -> [ArgOrRef] -> [ExprOrRef] -> MM (VEnv)
+    mapArgs venv [] [] = do
         env <- ask
         return $ vEnv env
 
-    mapArgs (RefArg typ a:fArgs) (ERefArg b:rArgs) = do
+    mapArgs venv (RefArg typ a:fArgs) (ERefArg b:rArgs) = do
         env <- ask
-        loc <- lookupVar b
+        loc <- local (\_ -> env {vEnv = venv}) (lookupVar b)
         let venv' = insertVar a loc (vEnv env)
-        local (\_ -> env {vEnv = venv'}) (mapArgs fArgs rArgs)
+        local (\_ -> env {vEnv = venv'}) (mapArgs venv fArgs rArgs)
 
-    mapArgs (Arg typ a:fArgs) (EExpArg b:rArgs) = do
+    mapArgs venv (Arg typ a:fArgs) (EExpArg b:rArgs) = do
         env <- ask
         (s, loc) <- get
         modify (getNewLoc)
         let venv' = insertVar a loc (vEnv env)
-        val <- evalExpr b
+        val <- local (\_ -> env {vEnv = venv}) (evalExpr b)
         loc <- local (\_ -> env {vEnv = venv'}) (lookupVar a)
         modify (insertStore loc val)
-        local (\_ -> env {vEnv = venv'}) (mapArgs fArgs rArgs)
+        local (\_ -> env {vEnv = venv'}) (mapArgs venv fArgs rArgs)
 
 --------------------------------------------------
 ------------------ STATEMENTS --------------------

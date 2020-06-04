@@ -12,12 +12,12 @@ int factor(int n) {
 }
 
 int main() {
-	int x = factor(17);
+	int x = factor(15);
 
-	if (x == 17) {
-		print("17 is a primary number.");
+	if (x == 15) {
+		print("15 is a primary number.");
 	} else {
-		print("17 is not a primary number.");
+		print("15 is not a primary number.");
 	}
 
 	return 0;
