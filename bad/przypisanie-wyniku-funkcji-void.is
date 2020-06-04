@@ -1,0 +1,9 @@
+void printHelloWorld() {
+	print("Hello world!");
+}
+
+int main() {
+	int x = printHelloWorld();
+
+	return 0;
+}
