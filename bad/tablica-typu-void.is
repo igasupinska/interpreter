@@ -1,7 +1,6 @@
-global array<int> arr;
-
-
 int main() {
 	
+	array<void> arr(6);
+
 	return 0;
 }

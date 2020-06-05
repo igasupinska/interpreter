@@ -115,73 +115,74 @@ module TypeChecker where
         t <- checkExpr e
         if t == expT
             then return ()
-            else throwError ("Expected " ++ show expT ++ " but got " ++ show t)
+            else throwError ("Expected " ++ printType expT ++ " but got " ++ printType t)
 
     checkExpr :: Expr -> TM (Type)
 
     checkExpr (EVar ident) = do
         env <- ask
-        lookupVar ident (vEnvT env)
+        typ <- lookupVar ident (vEnvT env)
+        return typ
     
     --int expr
-    checkExpr (ELitInt _) = return Int
+    checkExpr (ELitInt _) = return $ SType Int
     
     checkExpr (Neg e) = do
-        correctType Int e
-        return Int
+        correctType (SType Int) e
+        return $ SType Int
         `catchError` \err -> throwError ("Type error: in " ++ show (Neg e)  ++ " operation. "++ err)
 
     checkExpr (EMul e1 op e2) = do
-        correctType Int e1
-        correctType Int e2
-        return Int
+        correctType (SType Int) e1
+        correctType (SType Int) e2
+        return $ SType Int
         `catchError` \err -> throwError ("Type error: in " ++ show op  ++ " operation. "++ err)
 
     checkExpr (EAdd e1 op e2) = do
-        correctType Int e1
-        correctType Int e2
-        return Int
+        correctType (SType Int) e1
+        correctType (SType Int) e2
+        return $ SType Int
         `catchError` \err -> throwError ("Type error: in" ++ (show op) ++ "operation. " ++ err)
 
     --string expr
-    checkExpr (EString _) = return Str
+    checkExpr (EString _) = return $ SType Str
     
     --bool expr
-    checkExpr (ELitTrue) = return Bool
+    checkExpr (ELitTrue) = return $ SType Bool
     
-    checkExpr (ELitFalse) = return Bool
+    checkExpr (ELitFalse) = return $ SType Bool
     
     checkExpr (Not e) = do
-        correctType Bool e
-        return Bool
+        correctType (SType Bool) e
+        return $ SType Bool
         `catchError` \err -> throwError ("In " ++ show (Not e) ++ " operation. " ++ err)
     
     checkExpr (ERel e1 op e2) = do
-        correctType Int e1
-        correctType Int e2
-        return Bool
+        correctType (SType Int) e1
+        correctType (SType Int) e2
+        return $ SType Bool
         `catchError` \err -> throwError ("In" ++ (show op) ++ "operation. " ++ err)
 
     checkExpr (EAnd e1 e2) = do
-        correctType Bool e1
-        correctType Bool e2
-        return Bool
+        correctType (SType Bool) e1
+        correctType (SType Bool) e2
+        return $ SType Bool
         `catchError` \err -> throwError ("In && operation. " ++ err)
 
     checkExpr (EOr e1 e2) = do
-        correctType Bool e1
-        correctType Bool e2
-        return Bool
+        correctType (SType Bool) e1
+        correctType (SType Bool) e2
+        return $ SType Bool
         `catchError` \err -> throwError ("In || operation. " ++ err)
 
     --array expr
     checkExpr (ArrAcc (ArrItem a e)) = do
-        correctType Int e
+        correctType (SType Int) e
         env <- ask
         t <- lookupVar a (vEnvT env)
-        if isArray t
-            then return $ getArrType t
-            else throwError ("Not an array but " ++ show t)
+        case t of
+            SType typ -> throwError ("Not an array but " ++ show typ)
+            ArrType (Arr typ) -> return $ SType typ
         `catchError` \err -> throwError ("In array access. " ++ err)
 
     --function expr
@@ -240,45 +241,47 @@ module TypeChecker where
         (ret, flag) <- local (\_ -> env {vEnvT = (Map.empty: vEnvT env)}) (checkStmtBlockHelper (Block b) [] FNothingT)
         return (env, ret, flag)
 
-    checkStmt (Decl t (NoInit ident)) = do
+    checkStmt (VarDecl t (NoInit ident)) = do
         env <- ask
-        venv' <- insertVar ident t
+        venv' <- insertVar ident (SType t)
         return (env {vEnvT = venv'}, Nothing, FNothingT)
 
-    checkStmt (Decl t (Init ident expr)) = do
-        correctType t expr
-        checkStmt (Decl t (NoInit ident))
+    checkStmt (VarDecl t (Init ident expr)) = do
+        correctType (SType t) expr
+        checkStmt (VarDecl t (NoInit ident))
         `catchError` \err -> throwError ("In variable declaration. " ++ err)
 
-    checkStmt (Decl t (ArrNoInit ident expr)) = do
-        correctType Int expr
+    checkStmt (ArrDecl t (ArrNoInit ident expr)) = do
+        correctType (SType Int) expr
         env <- ask
-        venv' <- insertVar ident t
+        venv' <- insertVar ident (ArrType t)
         return (env {vEnvT = venv'}, Nothing, FNothingT)
         `catchError` \err -> throwError ("In array size expression. " ++ err)
     
-    checkStmt (Decl t (ArrInit ident expr l)) = do
-        (env, _, _) <- checkStmt (Decl t (ArrNoInit ident expr))
-        correctTypes (getArrType t) l
+    checkStmt (ArrDecl (Arr t) (ArrInit ident expr l)) = do
+        (env, _, _) <- checkStmt (ArrDecl (Arr t) (ArrNoInit ident expr))
+        correctTypes (SType t) l
         return (env, Nothing, FNothingT)
         `catchError` \err -> throwError ("In list initialization. " ++ err)
 
     checkStmt (Ass ident e) = do
         env <- ask
         t1 <- lookupVar ident (vEnvT env)
-        correctType t1 e
+        case t1 of
+            SType t -> correctType (SType t) e
+            ArrType (Arr t) -> throwError (show ident ++ "is an array. ")
         return (env, Nothing, FNothingT)
         `catchError` \err -> throwError ("In assignment. " ++ err)
     
     checkStmt (ArrAss (ArrItem id@(Ident ident) idx_e) e) = do
-        correctType Int idx_e
+        correctType (SType Int) idx_e
         env <- ask
         t1 <- lookupVar id (vEnvT env)
-        if isArray t1
-            then do
-                correctType (getArrType t1) e
-                return (env, Nothing, FNothingT)
-            else throwError (ident ++ " is not an array.")
+        case t1 of
+            ArrType (Arr t) -> do
+                            correctType (SType t) e
+                            return (env, Nothing, FNothingT)
+            SType _ -> throwError (ident ++ " is not an array.")
         `catchError` \err -> throwError ("In array assignment. " ++ err)
 
     checkStmt (Ret e) = do
@@ -288,19 +291,18 @@ module TypeChecker where
 
     checkStmt (VRet) = do
         env <- ask
-        return (env, Just Void, FNothingT)
+        return (env, Just (VType Void), FNothingT)
     
     checkStmt (Cond e b) = do
         env <- ask
-        correctType Bool e
+        correctType (SType Bool) e
         (_, ret, flag) <- checkStmt $ BStmt b
         return (env, ret, flag)
         `catchError` \err -> throwError ("In if. " ++ err)
 
-    --Iga: tu wrócić
     checkStmt (CondElse e if_b else_b) = do
         env <- ask
-        correctType Bool e
+        correctType (SType Bool) e
         (_, ret1, flag1) <- checkStmt $ BStmt if_b
         (_, ret2, flag2) <- checkStmt $ BStmt else_b
         let flag = chooseFlag flag1 flag2
@@ -313,16 +315,16 @@ module TypeChecker where
 
     checkStmt (While e b) = do
         env <- ask
-        correctType Bool e
+        correctType (SType Bool) e
         (_, ret, flag) <- checkStmt $ BStmt b
         return (env, ret, FNothingT)
         `catchError` \err -> throwError ("In while loop. " ++ err)
 
     checkStmt (For v start end b) = do
         env <- ask
-        correctType Int start
-        correctType Int end
-        correctType Int (EVar v)
+        correctType (SType Int) start
+        correctType (SType Int) end
+        correctType (SType Int) (EVar v)
         (_, ret, flag) <- checkStmt $ BStmt b
         return (env, ret, flag)
         `catchError` \err -> throwError ("In for loop. " ++ err)
@@ -330,9 +332,10 @@ module TypeChecker where
     checkStmt (Print e) = do
         env <- ask
         t <- checkExpr e
-        if isArray t || t == Void
-            then throwError ("In print: " ++ show t ++ " not printable.")
-            else return (env, Nothing, FNothingT)
+        case t of
+            ArrType (Arr t1) -> throwError ("In print: Array of " ++ show t1 ++ " not printable.")
+            VType Void -> throwError ("In print: void not printable.")
+            _ -> return (env, Nothing, FNothingT)
 
     checkStmt (SExp e) = do
         env <- ask
@@ -359,7 +362,7 @@ module TypeChecker where
     checkProgram :: Program -> TM ()
     checkProgram (Program []) = do
         mainDef <- lookupFun (Ident "main")
-        if retT mainDef /= Int
+        if retT mainDef /= SType Int
             then throwError ("Main function must return int")
             else if length (argsT mainDef) /= 0
                 then throwError ("Main takes no arguments")
@@ -371,6 +374,9 @@ module TypeChecker where
                                 env <- checkFunction f
                                 local (\_ -> env) (checkProgram (Program fs))
                         (GlobalVar t i) -> do
+                                env <- checkGlobal f
+                                local (\_ -> env) (checkProgram (Program fs))
+                        (GlobalArr t i) -> do
                                 env <- checkGlobal f
                                 local (\_ -> env) (checkProgram (Program fs))
 
@@ -392,12 +398,21 @@ module TypeChecker where
     checkReturn (Just retT) funT = do
         if retT == funT
             then return ()
-            else throwError ("Wrong type of return. Expecting " ++ show funT ++ " but got " ++ show retT)
+            else returnTypeError retT funT
             
     checkReturn Nothing funT = do
-        if Void == funT
+        if VType Void == funT
             then return ()
             else throwError ("No return statement in non-void function.")
+
+    returnTypeError :: Type -> Type -> TM()
+    returnTypeError t1 t2 = do
+            throwError ("Wrong type of return. Expected " ++ printType t1 ++ " but got " ++ printType t2)
+
+    printType :: Type -> String
+    printType (SType t) = show t
+    printType (VType t) = show t
+    printType (ArrType t) = show t
 
     checkFlag :: FlagT -> TM ()
     checkFlag flag = do
@@ -423,16 +438,20 @@ module TypeChecker where
         env <- ask
         case item of
             (NoInit id@(Ident ident)) -> do
-                gvenv' <- insertGlobalVar id typ
+                gvenv' <- insertGlobalVar id (SType typ)
                 return env {gEnvT = gvenv'}
             (Init id@(Ident ident) _) -> do
-                gvenv' <- insertGlobalVar id typ
+                gvenv' <- insertGlobalVar id (SType typ)
                 return env {gEnvT = gvenv'}
+    
+    checkGlobal (GlobalArr typ item) = do
+        env <- ask
+        case item of
             (ArrNoInit id@(Ident ident) _) -> do
-                gvenv' <- insertGlobalVar id typ
+                gvenv' <- insertGlobalVar id (ArrType typ)
                 return env {gEnvT = gvenv'}
             (ArrInit id@(Ident ident) _ _) -> do
-                gvenv' <- insertGlobalVar id typ
+                gvenv' <- insertGlobalVar id (ArrType typ)
                 return env {gEnvT = gvenv'}
 
 

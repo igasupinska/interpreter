@@ -146,11 +146,11 @@ module Interpreter where
         (_, val, flag) <- execStmtHelper (BStmt (Block b))
         return (env, val, flag)
 
-    execStmt (Decl t (NoInit ident)) = do
+    execStmt (VarDecl t (NoInit ident)) = do
         let e = getDefaultExpr t
-        execStmt (Decl t (Init ident e))
+        execStmt (VarDecl t (Init ident e))
 
-    execStmt (Decl t (Init ident expr)) = do
+    execStmt (VarDecl t (Init ident expr)) = do
         (s, loc) <- get
         modify (getNewLoc)
         env <- ask
@@ -158,12 +158,12 @@ module Interpreter where
         local (\_ -> env {vEnv = venv'}) (execStmt (Ass ident expr))
         return (env {vEnv = venv'}, Nothing, FNothing)
 
-    execStmt (Decl t (ArrNoInit ident expr)) = do
+    execStmt (ArrDecl t (ArrNoInit ident expr)) = do
         SInt size <- evalExpr expr
-        let initList = replicate (fromInteger size) (getDefaultExpr t)
-        execStmt (Decl t (ArrInit ident expr initList))
+        let initList = replicate (fromInteger size) (getDefaultArrExpr t)
+        execStmt (ArrDecl t (ArrInit ident expr initList))
 
-    execStmt (Decl t (ArrInit ident expr initList)) = do
+    execStmt (ArrDecl t (ArrInit ident expr initList)) = do
         (s, loc) <- get
         modify (getNewLoc)
         env <- ask
@@ -171,7 +171,7 @@ module Interpreter where
         if size < 0
             then throwError InvalidSize
             else do
-                let rest = replicate ((fromInteger size) - (length initList)) (getDefaultExpr t)
+                let rest = replicate ((fromInteger size) - (length initList)) (getDefaultArrExpr t)
                 list <- mapM evalExpr (initList ++ rest)
                 arr <- storeArray size list
                 modify (insertStore loc arr)
@@ -287,16 +287,19 @@ module Interpreter where
             NoInit ident -> do
                 val <- evalExpr $ getDefaultExpr typ
                 declGlobalVar ident val
-            
+
+    interpretTopDef (GlobalArr typ item) = do
+        env <- ask
+        case item of
             ArrInit ident e initList -> do
                 SInt size <- evalExpr e
-                let rest = replicate ((fromInteger size) - (length initList)) (getDefaultExpr typ)
+                let rest = replicate ((fromInteger size) - (length initList)) (getDefaultArrExpr typ)
                 list <- mapM evalExpr (initList ++ rest)
                 declGlobalArr ident size list
             
             ArrNoInit ident e -> do
                 SInt size <- evalExpr e
-                let initList = replicate (fromInteger size) (getDefaultExpr typ)
+                let initList = replicate (fromInteger size) (getDefaultArrExpr typ)
                 list <- mapM evalExpr initList
                 declGlobalArr ident size list
             

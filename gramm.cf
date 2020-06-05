@@ -4,7 +4,9 @@ entrypoints Program ;
 
 Program.   Program ::= [TopDef] ;
 
-GlobalVar. TopDef ::= "global" Type Item ";" ;
+GlobalVar. TopDef ::= "global" SType Item ";" ;
+
+GlobalArr. TopDef ::= "global" ArrType ArrDeclItem ";" ;
 
 FnDef.     TopDef ::= Type Ident "(" [ArgOrRef] ")" Block ;
 
@@ -24,15 +26,17 @@ Block.     Block ::= "{" [Stmt] "}" ;
 
 BStmt.     Stmt ::= Block ;
 
-Decl.      Stmt ::= Type Item ";" ;
+VarDecl.   Stmt ::= SType Item ";" ;
+
+ArrDecl.   Stmt ::= ArrType ArrDeclItem ";" ;
 
 NoInit.    Item ::= Ident ; 
 
 Init.      Item ::= Ident "=" Expr ;
 
-ArrNoInit. Item ::= Ident "(" Expr ")" ;
+ArrNoInit. ArrDeclItem ::= Ident "(" Expr ")" ;
 
-ArrInit.   Item ::= Ident "(" Expr ")" "{" [Expr] "}" ;
+ArrInit.   ArrDeclItem ::= Ident "(" Expr ")" "{" [Expr] "}" ;
 
 separator nonempty Item "," ;
 
@@ -62,19 +66,21 @@ Cont.      Stmt ::= "continue" ";" ;
 
 -- Types ---------------------------------------------------
 
-Int.       Type ::= "int" ;
+SType.	   Type ::= SType ;
 
-Str.       Type ::= "string" ;
+ArrType.   Type ::= ArrType ;
 
-Bool.      Type ::= "bool" ;
+VType.	   Type ::= VType ;
 
-Void.      Type ::= "void" ;
+Int.       SType ::= "int" ;
 
-ArrInt.    Type ::= "array" "<int>" ;
+Str.       SType ::= "string" ;
 
-ArrStr.    Type ::= "array" "<string>" ;
+Bool.      SType ::= "bool" ;
 
-ArrBool.   Type ::= "array" "<bool>" ;
+Void.      VType ::= "void" ;
+
+Arr.       ArrType ::= "array" "<" SType ">" ;
 
 -- Expressions ---------------------------------------------
 

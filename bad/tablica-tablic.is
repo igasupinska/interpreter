@@ -1,0 +1,6 @@
+int main() {
+	
+	array<array<int>> arrOfArr (5);
+
+	return 0;
+}

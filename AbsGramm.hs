@@ -12,7 +12,9 @@ data Program = Program [TopDef]
   deriving (Eq, Ord, Show, Read)
 
 data TopDef
-    = GlobalVar Type Item | FnDef Type Ident [ArgOrRef] Block
+    = GlobalVar SType Item
+    | GlobalArr ArrType ArrDeclItem
+    | FnDef Type Ident [ArgOrRef] Block
   deriving (Eq, Ord, Show, Read)
 
 data ArgOrRef = Arg Type Ident | RefArg Type Ident
@@ -23,7 +25,8 @@ data Block = Block [Stmt]
 
 data Stmt
     = BStmt Block
-    | Decl Type Item
+    | VarDecl SType Item
+    | ArrDecl ArrType ArrDeclItem
     | Ass Ident Expr
     | ArrAss ArrItem Expr
     | Ret Expr
@@ -38,14 +41,22 @@ data Stmt
     | Cont
   deriving (Eq, Ord, Show, Read)
 
-data Item
-    = NoInit Ident
-    | Init Ident Expr
-    | ArrNoInit Ident Expr
-    | ArrInit Ident Expr [Expr]
+data Item = NoInit Ident | Init Ident Expr
   deriving (Eq, Ord, Show, Read)
 
-data Type = Int | Str | Bool | Void | ArrInt | ArrStr | ArrBool
+data ArrDeclItem = ArrNoInit Ident Expr | ArrInit Ident Expr [Expr]
+  deriving (Eq, Ord, Show, Read)
+
+data Type = SType SType | ArrType ArrType | VType VType
+  deriving (Eq, Ord, Show, Read)
+
+data SType = Int | Str | Bool
+  deriving (Eq, Ord, Show, Read)
+
+data VType = Void
+  deriving (Eq, Ord, Show, Read)
+
+data ArrType = Arr SType
   deriving (Eq, Ord, Show, Read)
 
 data Expr

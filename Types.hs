@@ -54,19 +54,14 @@
     --my monad
     type MM = ReaderT Env (StateT Store (ExceptT MyException IO))
 
-    getDefaultExpr :: Type -> Expr
+    getDefaultExpr :: SType -> Expr
     getDefaultExpr Int = ELitInt 0
     getDefaultExpr Str = EString []
     getDefaultExpr Bool = ELitFalse
-    getDefaultExpr arr = getDefaultExpr $ getArrType arr
+
+    getDefaultArrExpr :: ArrType -> Expr
+    getDefaultArrExpr (Arr typ) = getDefaultExpr typ
 
     isArray :: Type -> Bool
-    isArray ArrInt = True
-    isArray ArrStr = True
-    isArray ArrBool = True
-    isArray a = False
-
-    getArrType :: Type -> Type
-    getArrType ArrInt = Int
-    getArrType ArrStr = Str
-    getArrType ArrBool = Bool
+    isArray (ArrType _) = True
+    isArray (SType _) = False
