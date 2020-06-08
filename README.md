@@ -22,6 +22,8 @@ Funkcje definiowane są jako typ zwracanej wartości, nazwa, lista argumentów i
 
     entrypoints Program ;
     Program.   Program ::= [TopDef] ;
+    GlobalVar. TopDef ::= "global" SType Item ";" ;
+    GlobalArr. TopDef ::= "global" ArrType ArrDeclItem ";" ;
     FnDef.     TopDef ::= Type Ident "(" [ArgOrRef] ")" Block ;
     Arg.       ArgOrRef ::= Type Ident ;
     RefArg.    ArgOrRef ::= "ref" Type Ident ;
@@ -31,7 +33,7 @@ Instrukcje języka takie jak instrukcja `pusta`, `if else`, `while` czy `return`
 
 Wymagana jest deklaracja zmiennej przed jej użyciem. Zmienne zadeklarowane w bloku, widoczne są jedynie w tym bloku i przesłaniają zmienne spoza bloku. Zmienne w bloku muszą mieć unikalne nazwy.
 
-Tablice deklarowane są `array<typ> nazwa_tablicy(rozmiar)`. W przypadku braku inicjalizacji, tablica wypełniana jest domyślnymi wartościami dla ustalonego typu. Tablica może zostać zainicjowana listą inicjalizacyjną, np. `array<int> nums(5) {1,2,3,4,5}`. W przypadku listy inicjalizacyjnej krótszej niż wielkość tablicy, na niezainicjalizowane pola zostaną przypisane wartości domyślne dla danego typu.
+Tablice deklarowane są `array<typ> nazwa_tablicy(rozmiar)`. W przypadku braku inicjalizacji, tablica wypełniana jest domyślnymi wartościami dla ustalonego typu. Tablica może zostać zainicjowana listą inicjalizacyjną, np. `array<int> nums(5) {1,2,3,4,5}`. W przypadku listy inicjalizacyjnej krótszej niż rozmiar tablicy, na niezainicjalizowane pola zostaną przypisane wartości domyślne dla danego typu.
 
 Pętla `for i from pocz to kon` wykonuje się `kon - pocz + 1` razy, o ile `kon >= pocz`. W przeciwnym wypadku, pętla nie wykonuje żadnego obrotu. `pocz` i `kon` muszą być wyrażeniami typu int; nie ma możliwości zmiany kroku pętli.
 
@@ -39,36 +41,41 @@ Dostępne są dwie operacje sterujące pętlą `while`: `break` oraz `continue`.
 
     Block.     Block ::= "{" [Stmt] "}" ;
     BStmt.     Stmt ::= Block ;
-    Decl.      Stmt ::= Type Item ;
+    VarDecl.   Stmt ::= SType Item ";" ;
+    ArrDecl.   Stmt ::= ArrType ArrDeclItem ";" ;
     NoInit.    Item ::= Ident ; 
     Init.      Item ::= Ident "=" Expr ;
-    ArrNoInit. Item ::= Ident "(" Expr ")" ;
-    ArrInit.   Item ::= Ident "(" Expr ")" "{" [Expr] "}" ;
-    Ass.       Stmt ::= Ident "=" Expr ;
-    Ret.       Stmt ::= "return" Expr ;
-    VRet.      Stmt ::= "return" ;
-    Cond.      Stmt ::= "if" "(" Expr ")" Block;
-    CondElse.  Stmt ::= "if" "(" Expr ")" Block "else" Block  ;
+    ArrNoInit. ArrDeclItem ::= Ident "(" Expr ")" ;
+    ArrInit.   ArrDeclItem ::= Ident "(" Expr ")" "{" [Expr] "}" ;
+    Ass.       Stmt ::= Ident "=" Expr ";" ;
+    ArrAss.    Stmt ::= ArrItem "=" Expr ";";
+    Ret.       Stmt ::= "return" Expr ";" ;
+    VRet.      Stmt ::= "return" ";" ;
+    Cond.      Stmt ::= "if" "(" Expr ")" Block ;
+    CondElse.  Stmt ::= "if" "(" Expr ")" Block "else" Block ;
     While.     Stmt ::= "while" "(" Expr ")" Block ;
     For.       Stmt ::= "for" "(" Ident "from" Expr "to" Expr ")" Block ;
-    Print.     Stmt ::= "print" Expr ;
-    SExp.      Stmt ::= Expr ;
-    Break.     Stmt ::= "break" ;
-    Cont.      Stmt ::= "continue" ;
+    Print.     Stmt ::= "print" Expr ";" ;
+    SExp.      Stmt ::= Expr ";" ;
+    Break.     Stmt ::= "break" ";" ;
+    Cont.      Stmt ::= "continue" ";" ;
 
-Język udostępnia wbudowaną funkcję `print`, przyjmującą argument dowolnego dostępnego typu.
+Język udostępnia wbudowaną funkcję `print`, przyjmującą argument dowolnego dostępnego typu prostego.
 
 ## Typy
 
-Typy int, void jak w Javie; string odpowiada String, bool odpowiada boolean. Tablice statyczne. Nie ma rzutowania na inny typ.
+Typy proste: int, void jak w Javie; string odpowiada String, bool odpowiada boolean. Tablice statyczne. Nie ma rzutowania na inny typ.
 
-    Int.       Type ::= "int" ;
-    Str.       Type ::= "string" ;
-    Bool.      Type ::= "bool" ;
-    Void.      Type ::= "void" ;
-    Arr.       Type ::= "array" "<" Type ">" ;
-
-Tablice mogą być dowolnego typu, w tym także przechowywać inne tablice. Możliwy jest dostęp do elementu pod zadanym indeksem poprzez `nazwa_tablicy[indeks]`.
+    SType.     Type ::= SType ;
+    ArrType.   Type ::= ArrType ;
+    VType.     Type ::= VType ;
+    Int.       SType ::= "int" ;
+    Str.       SType ::= "string" ;
+    Bool.      SType ::= "bool" ;
+    Void.      VType ::= "void" ;
+    Arr.       ArrType ::= "array" "<" SType ">" ;
+    
+Tablice mogą być dowolnego typu prostego. Możliwy jest dostęp do elementu pod zadanym indeksem poprzez `nazwa_tablicy[indeks]`.
  
  W przypadku deklaracji zmiennych bez inicjalizacji, ustalone są domyślne wartości dla typów, tj.:
 * `int` --> `0`
@@ -90,7 +97,7 @@ Wyrażenia stanowią podzbiór zbioru wyrażeń dostępnych w C/Javie:
     ELitFalse. Expr6 ::= "false" ;
     EApp.      Expr6 ::= Ident "(" [ExprOrRef] ")" ;
     EString.   Expr6 ::= String ;
-    ArrAcc.    Expr5 ::= Ident "[" Expr6 "]" ;
+    ArrAcc.    Expr5 ::= ArrItem ;
     Neg.       Expr5 ::= "-" Expr6 ;
     Not.       Expr5 ::= "!" Expr6 ;
     EMul.      Expr4 ::= Expr4 MulOp Expr5 ;
@@ -98,6 +105,7 @@ Wyrażenia stanowią podzbiór zbioru wyrażeń dostępnych w C/Javie:
     ERel.      Expr2 ::= Expr2 RelOp Expr3 ;
     EAnd.      Expr1 ::= Expr2 "&&" Expr1 ;
     EOr.       Expr ::= Expr1 "||" Expr ;
+    ArrItem.   ArrItem ::= Ident "[" Expr6 "]" ;
     ERefArg.   ExprOrRef ::= "ref" Ident ;
     EExpArg.   ExprOrRef ::= Expr ;
 
@@ -200,8 +208,8 @@ Wyrażenia logiczne obliczane są leniwie. Podczas aplikacji funkcji, parametry 
  
   Na 20 punktów | planowane | I iteracja | II iteracja
 ------------ | ------------- |------------- |------------- 
-  09 (przesłanianie i statyczne wiązanie) | ++ | ++
-  10 (obsługa błędów wykonania) | ++ | ++
+  09 (przesłanianie i statyczne wiązanie) | ++ | ++ | ++
+  10 (obsługa błędów wykonania) | ++ | ++ | ++
   11 (funkcje zwracające wartość) | ++ | ++
   
   Na 30 punktów | planowane | I iteracja | II iteracja
