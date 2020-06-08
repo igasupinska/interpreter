@@ -17,7 +17,7 @@ Interpreter uruchamia się poleceniem `./interpreter program`, gdzie program to 
 
 ## Struktura programu
 
-Program w tym języku (bazującym na Latte) jest listą definicji funkcji. Wykonanie programu zaczyna się od obowiązkowej funkcji main typu int, nie przyjmującej argumentów.
+Program w tym języku (bazującym na Latte) jest listą definicji funkcji i deklaracji globalnych zmiennych. Wykonanie programu zaczyna się od obowiązkowej funkcji main typu int, nie przyjmującej argumentów.
 Funkcje definiowane są jako typ zwracanej wartości, nazwa, lista argumentów i ciało funkcji. Funkcje o typie wyniku innym niż void, zwracają wartość za pomocą instrukcji return. Parametry do funkcji przekazywane są przez wartość lub przez zmienną. Funkcje muszą być zdefiniowane przed ich użyciem.
 
     entrypoints Program ;
