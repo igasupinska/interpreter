@@ -66,11 +66,11 @@ Cont.      Stmt ::= "continue" ";" ;
 
 -- Types ---------------------------------------------------
 
-SType.	   Type ::= SType ;
+SType.     Type ::= SType ;
 
 ArrType.   Type ::= ArrType ;
 
-VType.	   Type ::= VType ;
+VType.     Type ::= VType ;
 
 Int.       SType ::= "int" ;
 
