@@ -7,6 +7,6 @@ clean:
 	-rm -f *.log *.aux *.hi *.o *.dvi
 
 distclean: clean
-	-rm -f DocGramm.* LexGramm.* ParGramm.* LayoutGramm.* SkelGramm.* PrintGramm.* TestGramm.* AbsGramm.* TestGramm ErrM.* SharedString.* ComposOp.* gramm.dtd XMLGramm.* Makefile*
+	-rm -f DocGramm.* LexGramm.* ParGramm.* LayoutGramm.* SkelGramm.* PrintGramm.* TestGramm.* AbsGramm.* TestGramm ErrM.* SharedString.* ComposOp.* Gramm.dtd XMLGramm.* Makefile*
 	
 

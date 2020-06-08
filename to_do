@@ -1,4 +1,4 @@
 kompilacja:
-bnfc -m gramm.cf --functor
+bnfc -m Gramm.cf --functor
 make
 ghc --make Main.hs -o interpreter
